@@ -1,29 +1,52 @@
-// shapes.h - Geração das formas usadas no morphing.
-//
-// Ideia central: TODAS as formas são amostradas sobre a MESMA grade
-// paramétrica (u, v) com a mesma resolução. Assim o vértice i da esfera
-// corresponde ao vértice i do cubo, do toro etc. (correspondência 1:1),
-// e o morphing vira uma simples interpolação vértice a vértice.
-#pragma once
-#include <string>
-#include <vector>
+/* shapes.h - Geração das formas usadas no morphing.
+ *
+ * Ideia central: TODAS as formas são amostradas sobre a MESMA grade
+ * paramétrica (u, v) com a mesma resolução. Assim o vértice i da esfera
+ * corresponde ao vértice i do cubo, do toro etc. (correspondência 1:1),
+ * e o morphing vira uma simples interpolação vértice a vértice. */
+#ifndef SHAPES_H
+#define SHAPES_H
+
 #include "mathutil.h"
 
-struct Shape {
-    std::string name;
-    std::vector<Vec3> positions;  // um por vértice da grade
-    std::vector<Vec3> normals;    // normal de cada vértice
-    Vec3 color;                   // cor base da forma
+/* Resolução da grade paramétrica (igual para todas as formas). */
+#define GRID_U 64 /* divisões em torno do eixo Y (longitude) */
+#define GRID_V 48 /* divisões de cima para baixo (latitude) */
+
+#define VERTEX_COUNT ((GRID_U + 1) * (GRID_V + 1))
+#define INDEX_COUNT (GRID_U * GRID_V * 6)
+
+/* "static_assert" de C99: o array teria tamanho negativo se a condição
+ * falhasse. As arestas do cubo/cilindro precisam cair em linhas da grade. */
+typedef char grid_alinhada_com_arestas[(GRID_U % 8 == 0 && GRID_V % 4 == 0) ? 1 : -1];
+
+/* Formas disponíveis (a ordem é a das teclas 1, 2, 3...). */
+enum {
+    SHAPE_SPHERE = 0,
+    SHAPE_CUBE,
+    SHAPE_TORUS,
+    SHAPE_CYLINDER,
+    SHAPE_PLANE,
+    SHAPE_COUNT
 };
 
-// Resolução da grade paramétrica (iguais para todas as formas).
-constexpr int GRID_U = 64;  // divisões em torno do eixo Y (longitude)
-constexpr int GRID_V = 48;  // divisões de cima para baixo (latitude)
-static_assert(GRID_U % 8 == 0 && GRID_V % 4 == 0,
-              "arestas do cubo/cilindro precisam cair em linhas da grade");
+typedef struct {
+    const char *name;
+    Vec3 *positions; /* VERTEX_COUNT posições, uma por vértice da grade */
+    Vec3 *normals;   /* VERTEX_COUNT normais */
+    Vec3 color;      /* cor base da forma */
+} Shape;
 
-// Cria a lista de formas (esfera, cubo, toro, cilindro, ...).
-std::vector<Shape> buildShapes();
+/* Preenche shapes[0..SHAPE_COUNT-1]. Retorna 0 se faltar memória. */
+int shapes_build(Shape shapes[SHAPE_COUNT]);
+void shapes_free(Shape shapes[SHAPE_COUNT]);
 
-// Índices dos triângulos da grade (compartilhados por todas as formas).
-std::vector<unsigned int> buildGridIndices();
+/* Índices dos triângulos da grade (compartilhados por todas as formas).
+ * 'out' precisa ter INDEX_COUNT posições. */
+void grid_build_indices(unsigned int *out);
+
+/* Coordenadas de textura (u, v) de cada vértice da grade, iguais para
+ * todas as formas. 'out' precisa ter 2 * VERTEX_COUNT posições. */
+void grid_build_uvs(float *out);
+
+#endif /* SHAPES_H */

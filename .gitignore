@@ -1,0 +1,9 @@
+# Objetos e binários
+*.o
+morph3d
+morph3d.exe
+# Builds do CMake
+build/
+build-*/
+# Capturas temporárias
+*.ppm
