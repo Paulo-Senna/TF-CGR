@@ -80,6 +80,10 @@ O **título da janela** mostra o par de formas, o destino na fila
 | **Visualização** | modo de desenho, distância (zoom), rotação, *Resetar câmera* |
 | **Atalhos de teclado** | lista resumida das teclas |
 
+O programa abre com a animação automática **desligada** (forma parada na esfera);
+ligue pelo checkbox *Animação automática* ou com `ESPAÇO`. *Resetar tudo* também
+volta com ela desligada.
+
 Mexer no slider *t* desliga a animação automática (o usuário assume o controle).
 Se o slider chega em *t* = 1, a forma fica parada em B; a seta `→` ou a animação
 automática passam para o próximo par.
@@ -88,8 +92,9 @@ automática passam para o próximo par.
 
 ## 3. Sequência da demonstração (~6 min)
 
-1. **Abrir o programa** (≈30 s). Ele começa no modo antigo: morph automático
-   esfera → cubo → toro → cilindro → plano → esfera. *"Todas as formas têm
+1. **Abrir o programa** (≈30 s). Ele abre **parado** na esfera (animação
+   automática desligada). Marcar *Animação automática* no painel (ou `ESPAÇO`):
+   o morph passa por esfera → cubo → toro → cilindro → plano → esfera. *"Todas as formas têm
    exatamente o mesmo número de vértices e a mesma conectividade; só as
    posições mudam."*
 2. **`W` duas vezes (só malha)** (≈30 s): a malha é a mesma grade se

@@ -74,7 +74,7 @@ void app_reset_state(void) {
     app.morph.to = SHAPE_CUBE;
     app.morph.t = 0.0f;
     app.morph.hold = HOLD_TIME;
-    app.morph.auto_play = 1;
+    app.morph.auto_play = 0; /* começa parado: o usuário liga no painel ou com ESPAÇO */
     app.morph.smooth = 1;
     app.morph.queued = -1;
     app_reset_deform();
