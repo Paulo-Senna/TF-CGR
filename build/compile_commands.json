@@ -1,0 +1,56 @@
+[
+{
+  "directory": "/home/senna/Documents/TF-CGR/build",
+  "command": "/usr/bin/cc  -I/home/senna/Documents/TF-CGR/src -isystem /home/senna/Documents/TF-CGR/external/glad/include -isystem /home/senna/Documents/TF-CGR/external/nuklear -isystem /home/senna/Documents/TF-CGR/external/stb -O3 -DNDEBUG -std=c99 -w -o CMakeFiles/external.dir/external/glad/src/gl.c.o -c /home/senna/Documents/TF-CGR/external/glad/src/gl.c",
+  "file": "/home/senna/Documents/TF-CGR/external/glad/src/gl.c",
+  "output": "CMakeFiles/external.dir/external/glad/src/gl.c.o"
+},
+{
+  "directory": "/home/senna/Documents/TF-CGR/build",
+  "command": "/usr/bin/cc  -I/home/senna/Documents/TF-CGR/src -isystem /home/senna/Documents/TF-CGR/external/glad/include -isystem /home/senna/Documents/TF-CGR/external/nuklear -isystem /home/senna/Documents/TF-CGR/external/stb -O3 -DNDEBUG -std=c99 -w -o CMakeFiles/external.dir/external/nuklear/nuklear_impl.c.o -c /home/senna/Documents/TF-CGR/external/nuklear/nuklear_impl.c",
+  "file": "/home/senna/Documents/TF-CGR/external/nuklear/nuklear_impl.c",
+  "output": "CMakeFiles/external.dir/external/nuklear/nuklear_impl.c.o"
+},
+{
+  "directory": "/home/senna/Documents/TF-CGR/build",
+  "command": "/usr/bin/cc  -I/home/senna/Documents/TF-CGR/src -isystem /home/senna/Documents/TF-CGR/external/glad/include -isystem /home/senna/Documents/TF-CGR/external/nuklear -isystem /home/senna/Documents/TF-CGR/external/stb -O3 -DNDEBUG -std=c99 -w -o CMakeFiles/external.dir/external/stb/stb_image_impl.c.o -c /home/senna/Documents/TF-CGR/external/stb/stb_image_impl.c",
+  "file": "/home/senna/Documents/TF-CGR/external/stb/stb_image_impl.c",
+  "output": "CMakeFiles/external.dir/external/stb/stb_image_impl.c.o"
+},
+{
+  "directory": "/home/senna/Documents/TF-CGR/build",
+  "command": "/usr/bin/cc -DSHADER_DIR=\\\"/home/senna/Documents/TF-CGR/shaders\\\" -I/home/senna/Documents/TF-CGR/src -isystem /home/senna/Documents/TF-CGR/external/glad/include -isystem /home/senna/Documents/TF-CGR/external/nuklear -isystem /home/senna/Documents/TF-CGR/external/stb -O3 -DNDEBUG -std=c99 -Wall -Wextra -o CMakeFiles/morph3d.dir/src/main.c.o -c /home/senna/Documents/TF-CGR/src/main.c",
+  "file": "/home/senna/Documents/TF-CGR/src/main.c",
+  "output": "CMakeFiles/morph3d.dir/src/main.c.o"
+},
+{
+  "directory": "/home/senna/Documents/TF-CGR/build",
+  "command": "/usr/bin/cc -DSHADER_DIR=\\\"/home/senna/Documents/TF-CGR/shaders\\\" -I/home/senna/Documents/TF-CGR/src -isystem /home/senna/Documents/TF-CGR/external/glad/include -isystem /home/senna/Documents/TF-CGR/external/nuklear -isystem /home/senna/Documents/TF-CGR/external/stb -O3 -DNDEBUG -std=c99 -Wall -Wextra -o CMakeFiles/morph3d.dir/src/app.c.o -c /home/senna/Documents/TF-CGR/src/app.c",
+  "file": "/home/senna/Documents/TF-CGR/src/app.c",
+  "output": "CMakeFiles/morph3d.dir/src/app.c.o"
+},
+{
+  "directory": "/home/senna/Documents/TF-CGR/build",
+  "command": "/usr/bin/cc -DSHADER_DIR=\\\"/home/senna/Documents/TF-CGR/shaders\\\" -I/home/senna/Documents/TF-CGR/src -isystem /home/senna/Documents/TF-CGR/external/glad/include -isystem /home/senna/Documents/TF-CGR/external/nuklear -isystem /home/senna/Documents/TF-CGR/external/stb -O3 -DNDEBUG -std=c99 -Wall -Wextra -o CMakeFiles/morph3d.dir/src/shapes.c.o -c /home/senna/Documents/TF-CGR/src/shapes.c",
+  "file": "/home/senna/Documents/TF-CGR/src/shapes.c",
+  "output": "CMakeFiles/morph3d.dir/src/shapes.c.o"
+},
+{
+  "directory": "/home/senna/Documents/TF-CGR/build",
+  "command": "/usr/bin/cc -DSHADER_DIR=\\\"/home/senna/Documents/TF-CGR/shaders\\\" -I/home/senna/Documents/TF-CGR/src -isystem /home/senna/Documents/TF-CGR/external/glad/include -isystem /home/senna/Documents/TF-CGR/external/nuklear -isystem /home/senna/Documents/TF-CGR/external/stb -O3 -DNDEBUG -std=c99 -Wall -Wextra -o CMakeFiles/morph3d.dir/src/shader.c.o -c /home/senna/Documents/TF-CGR/src/shader.c",
+  "file": "/home/senna/Documents/TF-CGR/src/shader.c",
+  "output": "CMakeFiles/morph3d.dir/src/shader.c.o"
+},
+{
+  "directory": "/home/senna/Documents/TF-CGR/build",
+  "command": "/usr/bin/cc -DSHADER_DIR=\\\"/home/senna/Documents/TF-CGR/shaders\\\" -I/home/senna/Documents/TF-CGR/src -isystem /home/senna/Documents/TF-CGR/external/glad/include -isystem /home/senna/Documents/TF-CGR/external/nuklear -isystem /home/senna/Documents/TF-CGR/external/stb -O3 -DNDEBUG -std=c99 -Wall -Wextra -o CMakeFiles/morph3d.dir/src/texture.c.o -c /home/senna/Documents/TF-CGR/src/texture.c",
+  "file": "/home/senna/Documents/TF-CGR/src/texture.c",
+  "output": "CMakeFiles/morph3d.dir/src/texture.c.o"
+},
+{
+  "directory": "/home/senna/Documents/TF-CGR/build",
+  "command": "/usr/bin/cc -DSHADER_DIR=\\\"/home/senna/Documents/TF-CGR/shaders\\\" -I/home/senna/Documents/TF-CGR/src -isystem /home/senna/Documents/TF-CGR/external/glad/include -isystem /home/senna/Documents/TF-CGR/external/nuklear -isystem /home/senna/Documents/TF-CGR/external/stb -O3 -DNDEBUG -std=c99 -Wall -Wextra -o CMakeFiles/morph3d.dir/src/ui.c.o -c /home/senna/Documents/TF-CGR/src/ui.c",
+  "file": "/home/senna/Documents/TF-CGR/src/ui.c",
+  "output": "CMakeFiles/morph3d.dir/src/ui.c.o"
+}
+]
