@@ -4,22 +4,23 @@
  *   u em [0,1] -> ângulo theta = 2*pi*u em torno do eixo Y
  *   v em [0,1] -> vai do "topo" (v=0) até a "base" (v=1)
  * Pontos com o mesmo (u, v) em formas diferentes são correspondentes. */
-#include "shapes.h"
+#include "geometry/shapes.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 /* Uma função por forma: recebe (u, v) e devolve posição e normal. */
 typedef void (*ShapeFn)(float u, float v, Vec3 *pos, Vec3 *nrm);
 
 /* Direção na esfera unitária para o par (u, v). */
-static Vec3 sphere_dir(float u, float v) {
+Vec3 grid_sphere_dir(float u, float v) {
     float theta = 2.0f * PI_F * u;
     float phi = PI_F * v; /* 0 = polo norte, pi = polo sul */
     return v3(sinf(phi) * cosf(theta), cosf(phi), sinf(phi) * sinf(theta));
 }
 
 static void sphere(float u, float v, Vec3 *p, Vec3 *n) {
-    *n = sphere_dir(u, v);
+    *n = grid_sphere_dir(u, v);
     *p = *n; /* raio 1 */
 }
 
@@ -100,7 +101,7 @@ static void plane(float u, float v, Vec3 *p, Vec3 *n) {
 /* Amostra a função 'fn' em todos os vértices da grade. */
 static int sample(Shape *s, const char *name, ShapeFn fn, Vec3 color) {
     int i, j, k = 0;
-    s->name = name;
+    snprintf(s->name, sizeof(s->name), "%s", name);
     s->color = color;
     s->positions = (Vec3 *)malloc(VERTEX_COUNT * sizeof(Vec3));
     s->normals = (Vec3 *)malloc(VERTEX_COUNT * sizeof(Vec3));
@@ -116,7 +117,7 @@ static int sample(Shape *s, const char *name, ShapeFn fn, Vec3 color) {
     return 1;
 }
 
-int shapes_build(Shape shapes[SHAPE_COUNT]) {
+int shapes_build(Shape *shapes) {
     int ok = 1;
     ok &= sample(&shapes[SHAPE_SPHERE],   "Esfera",   sphere,   v3(0.25f, 0.55f, 0.95f));
     ok &= sample(&shapes[SHAPE_CUBE],     "Cubo",     cube,     v3(0.95f, 0.55f, 0.20f));
@@ -126,13 +127,10 @@ int shapes_build(Shape shapes[SHAPE_COUNT]) {
     return ok;
 }
 
-void shapes_free(Shape shapes[SHAPE_COUNT]) {
-    int s;
-    for (s = 0; s < SHAPE_COUNT; ++s) {
-        free(shapes[s].positions);
-        free(shapes[s].normals);
-        shapes[s].positions = shapes[s].normals = NULL;
-    }
+void shape_free(Shape *s) {
+    free(s->positions);
+    free(s->normals);
+    s->positions = s->normals = NULL;
 }
 
 void grid_build_uvs(float *out) {

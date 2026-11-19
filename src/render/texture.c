@@ -1,5 +1,5 @@
 /* texture.c - Texturas procedurais (geradas na CPU) e carregamento de imagens. */
-#include "texture.h"
+#include "render/texture.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -79,16 +79,22 @@ static void make_uv_grid(unsigned char *px) {
         }
 }
 
+int texture_proc_pixels(int which, unsigned char *px) {
+    switch (which) {
+        case TEX_CHECKER: make_checker(px); return 1;
+        case TEX_STRIPES: make_stripes(px); return 1;
+        case TEX_UV_GRID: make_uv_grid(px); return 1;
+        default: return 0;
+    }
+}
+
 int texture_make_presets(GLuint ids[TEX_COUNT]) {
     unsigned char *px = (unsigned char *)malloc((size_t)TEX_PROC_SIZE * TEX_PROC_SIZE * 4);
+    int i;
     if (!px) return 0;
     memset(ids, 0, TEX_COUNT * sizeof(GLuint));
-    make_checker(px);
-    ids[TEX_CHECKER] = texture_create_rgba(px, TEX_PROC_SIZE, TEX_PROC_SIZE);
-    make_stripes(px);
-    ids[TEX_STRIPES] = texture_create_rgba(px, TEX_PROC_SIZE, TEX_PROC_SIZE);
-    make_uv_grid(px);
-    ids[TEX_UV_GRID] = texture_create_rgba(px, TEX_PROC_SIZE, TEX_PROC_SIZE);
+    for (i = 0; i < TEX_COUNT; ++i)
+        if (texture_proc_pixels(i, px)) ids[i] = texture_create_rgba(px, TEX_PROC_SIZE, TEX_PROC_SIZE);
     free(px);
     return 1;
 }

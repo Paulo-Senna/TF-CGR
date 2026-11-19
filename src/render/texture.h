@@ -26,6 +26,10 @@ const char *texture_name(int which);
 /* Cria uma textura RGBA (GL_REPEAT, mipmaps, filtro linear). */
 GLuint texture_create_rgba(const unsigned char *pixels, int w, int h);
 
+/* Desenha a textura procedural 'which' em px (TEX_PROC_SIZE² pixels RGBA;
+ * a linha 0 é v = 0). Retorna 0 se 'which' não for procedural. */
+int texture_proc_pixels(int which, unsigned char *px);
+
 /* Gera as texturas procedurais em ids[TEX_CHECKER..TEX_UV_GRID].
  * ids[TEX_NONE] e ids[TEX_IMAGE] ficam 0. Retorna 0 se faltar memória. */
 int texture_make_presets(GLuint ids[TEX_COUNT]);

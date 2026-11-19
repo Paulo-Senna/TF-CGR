@@ -1,5 +1,5 @@
 /* shader.c - Carregamento e compilação de shaders GLSL. */
-#include "shader.h"
+#include "render/shader.h"
 
 #include <stdio.h>
 #include <stdlib.h>

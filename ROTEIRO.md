@@ -31,14 +31,19 @@ morph3d.exe
 - Requer placa/driver com **OpenGL 3.3**.
 - Com `make`, rode a partir da pasta do projeto (os shaders ficam em `shaders/`).
   O executável do CMake (`build/morph3d`) acha os shaders de qualquer pasta.
-- `make DEBUG=1` gera uma build de depuração com *AddressSanitizer* e *UBSan*.
+- `make DEBUG=1` gera uma build de depuração com *AddressSanitizer* e *UBSan*
+  (rode `make clean` antes de trocar entre a build normal e a de depuração).
+- As janelas de escolher arquivo usam o diálogo nativo no Windows e o `zenity`
+  (ou `kdialog`) no Linux. Nada precisa ser reiniciado: formas e texturas
+  adicionadas entram na hora.
 
 **Opções de linha de comando** (todas opcionais):
 
 | Opção | Efeito |
 |---|---|
 | `./morph3d foto.png` | já abre usando a imagem como textura |
-| `--preset N` | abre com o preset N (1 a 6) aplicado |
+| `--forma modelo.obj` | já abre com o modelo adicionado como forma |
+| `--exportar saida.obj` | exporta a forma exibida ao abrir (útil para testes) |
 | `--captura arq.ppm` | salva um quadro em PPM e fecha (passo de tempo fixo, reprodutível) |
 | `--quadros N` | qual quadro capturar (padrão 100) |
 
@@ -50,35 +55,45 @@ morph3d.exe
 
 | Tecla | Ação |
 |---|---|
-| `ESPAÇO` | pausa / retoma a animação automática |
+| `ESPAÇO` | liga / pausa a animação automática |
 | `←` `→` (segurar) | controla o morph manualmente (diminui / aumenta *t*) |
-| `1` a `5` | escolhe a próxima forma (Esfera, Cubo, Toro, Cilindro, Plano) |
-| `S` | alterna curva **linear** / **suavizada** (smoothstep) |
+| `1` a `5` | escolhe a próxima forma: 1 Esfera, 2 Cubo, 3 Toro, 4 Cilindro, 5 Plano (as formas adicionadas ganham `6` a `9`; o teclado numérico também funciona) |
 | `W` | alterna sólido / sólido + malha / só malha |
 | `R` | liga/desliga a rotação do objeto |
 | mouse (arrastar na cena) | orbita a câmera |
 | scroll (na cena) | zoom |
 | arrastar um PNG/JPG para a janela | usa a imagem como textura |
+| arrastar um .obj para a janela | adiciona o modelo como forma |
 | `ESC` | sair |
 
 Com o mouse **sobre o painel**, arrastar e rolar mexem no painel, não na câmera.
-Enquanto o **campo de texto** do caminho da imagem está em edição, os atalhos
-ficam desligados (para dar para digitar "s", "w", "1"...). Enter carrega a imagem
-e devolve o teclado aos atalhos.
 
 O **título da janela** mostra o par de formas, o destino na fila
-(ex.: `(próximo: Toro)`), o valor de *t*, o modo, a curva e o FPS.
+(ex.: `(próximo: Toro)`), o valor de *t*, o modo e o FPS.
 
 ### Painel (à esquerda; o "–" no título recolhe o painel)
 
 | Seção | Controles |
 |---|---|
-| **Presets** | 5 configurações prontas + *Resetar tudo* (passe o mouse para ver a descrição) |
-| **Forma e mistura** | Forma A, Forma B, slider *t*, % exibida, animação automática, curva suave |
+| **Forma e mistura** | Forma A, Forma B, slider *t*, % exibida, animação automática, *Adicionar forma (.obj)...* |
 | **Deformações (Barr)** | sliders Taper [-0,9; 0,9], Twist [-6; 6] rad/unid., Bend [-1,5; 1,5] e *Zerar deformações* |
-| **Textura** | Nenhuma / Xadrez / Listras / Grade UV / Imagem carregada, *Repetição*, *Multiplicar pela cor da forma*, caminho + *Carregar* |
+| **Textura** | Nenhuma / Xadrez / Listras / Grade UV / Imagem carregada, *Repetição*, *Multiplicar pela cor da forma*, *Adicionar imagem (PNG/JPG)...* |
 | **Visualização** | modo de desenho, distância (zoom), rotação, *Resetar câmera* |
 | **Atalhos de teclado** | lista resumida das teclas |
+| (fim do painel) | *Resetar tudo* e *Exportar 3D (.obj)...* |
+
+Ao abrir, só **Forma e mistura** e **Atalhos de teclado** vêm expandidas; as
+outras seções abrem com um clique no título.
+
+**Adicionar forma**: abre a janela de arquivos para escolher um modelo `.obj`.
+O modelo é encaixado na grade (seção 4.8), vira a *Forma A* (parado, *t* = 0) e
+entra na lista das formas e nas teclas `6` a `9` (até 4 formas adicionadas).
+
+**Exportar 3D**: abre a janela de salvar; na pasta escolhida são criados
+`nome.obj` (malha com a mistura e as deformações atuais), `nome.mtl` (cor) e,
+se houver textura, `nome_textura.tga` (xadrez/listras/grade) ou uma cópia da
+imagem carregada. Abre no Blender, MeshLab etc., e também pode ser reaberto aqui
+com *Adicionar forma* (sem perda: o arquivo já está na ordem da grade).
 
 O programa abre com a animação automática **desligada** (forma parada na esfera);
 ligue pelo checkbox *Animação automática* ou com `ESPAÇO`. *Resetar tudo* também
@@ -100,24 +115,26 @@ automática passam para o próximo par.
 2. **`W` duas vezes (só malha)** (≈30 s): a malha é a mesma grade se
    deformando. Voltar com `W` para sólido.
 3. **Mistura pelo painel** (≈1 min): escolher *Forma A = Cubo*, *Forma B = Toro*
-   e arrastar o slider *t* devagar. Marcar/desmarcar *Curva suave* no meio:
-   **a forma não pula** (explicar a conversão de *t*, seção 4.3). Teclas `1`–`5`
+   e arrastar o slider *t* devagar. Teclas `1`–`5`
    durante um morph: o destino aparece no título como "próximo".
-4. **Preset "Esfera torcida"** (≈45 s): *"A esfera é simétrica em torno de Y, então
-   a torção não muda a silhueta... mas o xadrez mostra que cada camada girou."*
-   Mexer no slider *Twist* e mostrar a malha com `W`.
-5. **Preset "Cilindro dobrado"** (≈45 s): bend com a grade UV; as linhas
-   mostram o lado de fora esticado e o de dentro comprimido. Aumentar o *Bend*
-   até ~1,5 e combinar com *Twist*.
-6. **Preset "Cone por taper"** (≈30 s): o cilindro vira tronco de cone;
-   os quadrados do xadrez ficam menores no topo.
-7. **Preset "Plano → Esfera"** (≈30 s): o plano se fecha numa esfera; a grade
-   UV mostra para onde cada pedaço do plano foi.
-8. **Carregar uma imagem** (≈30 s): arrastar um PNG/JPG para a janela (ou
-   digitar o caminho e clicar *Carregar*). Aplicar deformações em cima.
-   Mostrar um caminho errado: aparece a mensagem de erro e nada fecha.
-9. **Código** (≈1 min): abrir `shaders/morph.vert` (mistura, `deform()` e o
-   cálculo da normal) e `src/shapes.c` (a grade comum).
+4. **Esfera torcida** (≈45 s): *Resetar tudo*, abrir *Textura* e escolher
+   *Xadrez*; abrir *Deformações* e subir o *Twist*. *"A esfera é simétrica em
+   torno de Y, então a torção não muda a silhueta... mas o xadrez mostra que
+   cada camada girou."* Mostrar a malha com `W`.
+5. **Cilindro dobrado** (≈45 s): Forma A = Cilindro, textura *Grade UV*, *Bend*
+   em ~1: as linhas mostram o lado de fora esticado e o de dentro comprimido.
+   Combinar com *Twist*.
+6. **Cone por taper** (≈30 s): Cilindro com *Taper* em -0,8 e xadrez: vira
+   tronco de cone; os quadrados ficam menores no topo.
+7. **Plano → Esfera** (≈30 s): Forma A = Plano, Forma B = Esfera, textura
+   *Grade UV*, arrastar *t*: o plano se fecha numa esfera.
+8. **Imagem e modelo próprios** (≈1 min): *Adicionar imagem* (janela de
+   arquivos) e aplicar deformações em cima. *Adicionar forma* com um `.obj` e
+   fazer o morph Esfera → modelo.
+9. **Exportar** (≈30 s): *Exportar 3D*, salvar e mostrar o `.obj` aberto num
+   visualizador (ou reabrir com *Adicionar forma*).
+10. **Código** (≈1 min): abrir `shaders/morph.vert` (mistura, `deform()` e o
+    cálculo da normal) e `src/geometry/shapes.c` (a grade comum).
 
 ---
 
@@ -153,22 +170,7 @@ A normal é interpolada e **renormalizada**, porque a média de dois vetores uni
 não é unitária (se as normais forem opostas, a soma é zero; nesse caso o shader
 usa uma normal padrão em vez de dividir por zero). A cor também é interpolada.
 
-### 4.3 Suavização temporal (easing) e troca de curva sem salto
-
-O *t* linear passa por **smoothstep: s(t) = 3t² − 2t³**, que tem derivada zero
-em t = 0 e t = 1: a forma "sai" e "chega" sem tranco.
-
-A forma exibida depende de **s(t)**, não de *t*. Se a curva fosse trocada no meio
-do morph sem cuidado, a forma pularia (ex.: t = 0,2 → s = 0,104). Solução:
-ao trocar, convertemos *t* para que o valor exibido continue igual:
-
-- suave → linear: **t' = s(t)**
-- linear → suave: **t' = s⁻¹(t) = ½ − sen(asen(1 − 2t) / 3)** (solução fechada da cúbica)
-
-A animação continua dali com a nova curva, sem descontinuidade. (A alternativa
-"só aplicar no próximo morph" deixaria o checkbox mentindo durante um tempo.)
-
-### 4.4 Deformações de Barr (o principal do trabalho)
+### 4.3 Deformações de Barr (o principal do trabalho)
 
 Aplicadas **depois** da mistura, em espaço do objeto, ao longo do eixo Y, na ordem
 **taper → twist → bend** (função `deform()` em `morph.vert`):
@@ -186,7 +188,7 @@ vai para o ângulo θ = k·y desse arco. Para |k| < 10⁻⁴ é usada a identida
 A **ordem importa**: deformações não comutam. Por exemplo, twist depois de bend
 giraria em torno do eixo Y original, não do eixo já curvado.
 
-### 4.5 Normais depois da deformação (cálculo numérico)
+### 4.4 Normais depois da deformação (cálculo numérico)
 
 A normal antiga não serve: a deformação estica e gira a superfície. Em vez de
 derivar a fórmula da normal de cada combinação de deformações (a normal correta é
@@ -206,7 +208,7 @@ Vantagens: funciona para **qualquer** combinação de deformações, roda na GPU
 custa só 3 avaliações extras de `deform()` por vértice. Sem deformação,
 deform é a identidade e n' = t₁ × t₂ = n (o resultado antigo).
 
-### 4.6 Mapeamento de textura paramétrico
+### 4.5 Mapeamento de textura paramétrico
 
 A coordenada de textura de cada vértice é o próprio **(u, v)** da grade, igual
 para todas as formas (um único VBO no atributo 4). Ela **não muda** com a
@@ -224,7 +226,7 @@ cresce da direita para a esquerda para quem olha a forma de fora (sem isso,
 textos apareceriam invertidos). No fragment shader: cor base = textura, ou
 textura × cor da forma, ou só a cor; depois vem o Phong.
 
-### 4.7 Implementação em OpenGL moderno
+### 4.6 Implementação em OpenGL moderno
 
 - Cada forma fica em **um VBO** (posição + normal intercaladas), enviado **uma vez**.
 - O **VAO** liga a forma A nos atributos `0/1`, a B nos `2/3` e os UVs no `4`.
@@ -237,7 +239,7 @@ textura × cor da forma, ou só a cor; depois vem o Phong.
 - **Interface** com Nuklear (modo imediato): o painel é descrito de novo a cada
   quadro, lendo e escrevendo direto no estado do programa.
 
-### 4.8 Tópicos da disciplina usados
+### 4.7 Tópicos da disciplina usados
 
 Transformações geométricas (modelo, visão, projeção perspectiva), **deformações
 não lineares** (Barr), modelagem de superfícies paramétricas, malhas poligonais e
@@ -245,6 +247,31 @@ indexação, cálculo de normais (analítico e numérico), modelo de iluminaçã
 **mapeamento de textura** (coordenadas, repetição, filtragem, mipmaps), pipeline
 programável (shaders, VBO/VAO/EBO), interação (teclado, mouse, interface gráfica)
 e animação baseada em tempo (`dt`, independente de FPS).
+
+### 4.8 Modelos importados: encaixe na grade e exportação
+
+Um `.obj` qualquer tem a sua própria malha (outro número de vértices, outra
+ordem), então não existe correspondência 1:1 com as nossas formas. A solução
+(`src/geometry/mesh_fit.c`) é **reamostrar** o modelo na grade:
+
+1. o modelo é centralizado (centro da caixa envolvente) e escalado para caber
+   na esfera de raio 1;
+2. para cada vértice (u, v) da grade, sai um **raio do centro** na direção do
+   vértice correspondente da esfera; o ponto mais externo em que o raio fura a
+   superfície (interseção raio-triângulo de Möller-Trumbore) vira a posição;
+3. as normais são calculadas pela própria grade (produto vetorial dos vizinhos).
+
+Assim o morph Esfera → modelo é natural: cada ponto da esfera "anda" em linha
+reta até o modelo. Para não testar todos os triângulos em cada raio, os
+triângulos são separados por faixa de latitude (só os da faixa do raio são
+testados). Limites: partes que o centro não enxerga (cavidades, a alça de uma
+xícara) se perdem, e arestas vivas ficam um pouco serrilhadas (a grade tem
+65×49 vértices).
+
+A **exportação** (`src/io/export.c`) refaz na CPU a mesma conta do vertex
+shader (mistura + `deform()` + normal numérica, em `src/geometry/deform.c`) e
+grava `.obj` + `.mtl`. O arquivo leva o comentário `# morph3d-grade`: ao ser
+reaberto, os vértices já estão na ordem da grade e entram direto, sem reamostrar.
 
 ---
 
@@ -306,19 +333,30 @@ arrays com `malloc/free` e compila em C99 com `-Wall -Wextra` sem avisos.
 ```
 TF-CGR/
 ├── src/
-│   ├── main.c            janela, laço principal, entrada, desenho da cena
-│   ├── app.c / app.h     estado do programa e lógica do morph (curva, fila, slider)
-│   ├── ui.c / ui.h       painel Nuklear e presets de um clique
-│   ├── shapes.c / .h     formas paramétricas na grade (u, v), índices e UVs
-│   ├── texture.c / .h    texturas procedurais e carregamento PNG/JPG
-│   ├── shader.c / .h     leitura/compilação/link dos shaders
-│   ├── mathutil.h        Vec3, Mat4, perspective, lookAt, rotate_y
-│   └── nuklear_setup.h   opções comuns do Nuklear
+│   ├── main.c                janela, laço principal, entrada, desenho da cena
+│   ├── app/
+│   │   └── app.c / .h        estado do programa e lógica do morph (fila, slider,
+│   │                         adicionar forma)
+│   ├── geometry/
+│   │   ├── mathutil.h        Vec3, Mat4, perspective, lookAt, rotate_y
+│   │   ├── shapes.c / .h     formas paramétricas na grade (u, v), índices e UVs
+│   │   ├── deform.c / .h     taper/twist/bend na CPU (cópia do shader, para exportar)
+│   │   └── mesh_fit.c / .h   encaixa um modelo .obj qualquer na grade
+│   ├── render/
+│   │   ├── shader.c / .h     leitura/compilação/link dos shaders
+│   │   └── texture.c / .h    texturas procedurais e carregamento PNG/JPG
+│   ├── io/
+│   │   ├── obj.c / .h        leitura e escrita de arquivos .obj
+│   │   ├── export.c / .h     exportação do modelo deformado (.obj + .mtl + textura)
+│   │   └── file_dialog.c / .h janela de abrir/salvar arquivo (Windows / zenity)
+│   └── ui/
+│       ├── ui.c / .h         painel Nuklear
+│       └── nuklear_setup.h   opções comuns do Nuklear
 ├── shaders/
 │   ├── morph.vert        mistura, deformações de Barr e normais numéricas
 │   └── morph.frag        textura + iluminação de Phong
 ├── external/             glad (OpenGL 3.3), Nuklear, stb_image (terceiros)
-├── docs/img/             capturas dos presets
+├── docs/img/             capturas de exemplos de deformação
 ├── CMakeLists.txt
 └── Makefile
 ```

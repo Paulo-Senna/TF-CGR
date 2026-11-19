@@ -15,7 +15,7 @@ layout(location = 2) in vec3 aPosB;
 layout(location = 3) in vec3 aNrmB;
 layout(location = 4) in vec2 aUV;  // (u,v) da grade: igual para todas as formas
 
-uniform float uT;      // fator de mistura em [0,1] (já com a curva aplicada)
+uniform float uT;      // fator de mistura em [0,1]
 uniform float uTaper;  // afunilamento: escala de x,z por unidade de y
 uniform float uTwist;  // torção: radianos por unidade de y
 uniform float uBend;   // dobra: curvatura (1/raio)

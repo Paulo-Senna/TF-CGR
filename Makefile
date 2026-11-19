@@ -21,22 +21,25 @@ endif
 
 ifeq ($(OS),Windows_NT)
     TARGET := morph3d.exe
-    LIBS   := -lglfw3 -lopengl32 -lgdi32 -lm
+    LIBS   := -lglfw3 -lopengl32 -lgdi32 -lcomdlg32 -lm
 else
     TARGET := morph3d
     LIBS   := -lglfw -lGL -ldl -lpthread -lm
 endif
 
-OBJS     := src/main.o src/app.o src/shapes.o src/shader.o src/texture.o src/ui.o
+# Todo .c dentro de src/ e das subpastas (app, geometry, render, io, ui).
+SRCS     := $(wildcard src/*.c src/*/*.c)
+OBJS     := $(SRCS:.c=.o)
+HEADERS  := $(wildcard src/*/*.h)
 EXT_OBJS := external/glad/src/gl.o external/nuklear/nuklear_impl.o external/stb/stb_image_impl.o
 
 $(TARGET): $(OBJS) $(EXT_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-src/%.o: src/%.c src/*.h
+src/%.o: src/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-external/%.o: external/%.c src/nuklear_setup.h
+external/%.o: external/%.c src/ui/nuklear_setup.h
 	$(CC) $(EXT_CFLAGS) -c $< -o $@
 
 clean:

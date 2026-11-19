@@ -3,12 +3,14 @@
  * O Nuklear é uma interface "modo imediato": a cada quadro o painel
  * inteiro é descrito de novo, lendo e escrevendo direto no estado 'app'.
  * Não existe "objeto botão" guardado; um botão é só um if. */
-#include "ui.h"
+#include "ui/ui.h"
 
 #include <stdio.h>
 
-#include "app.h"
-#include "nuklear_setup.h"
+#include "app/app.h"
+#include "io/export.h"
+#include "io/file_dialog.h"
+#include "ui/nuklear_setup.h"
 
 #define PANEL_NAME "painel"
 #define PANEL_TITLE "Laboratório de Deformação"
@@ -21,8 +23,7 @@
 
 static struct nk_glfw nk_glfw_state; /* estado do backend GLFW + OpenGL 3 */
 static struct nk_context *ctx;
-static int panel_open = 1;  /* painel expandido (não minimizado)? */
-static int text_active = 0; /* algum campo de texto em edição neste quadro? */
+static int panel_open = 1; /* painel expandido (não minimizado)? */
 
 /* ----------------------------------------------------------------------------
  * Inicialização / eventos
@@ -77,66 +78,7 @@ void ui_on_mouse_button(GLFWwindow *win, int button, int action, int mods) {
 }
 
 int ui_wants_mouse(void) { return ctx && nk_window_is_any_hovered(ctx); }
-int ui_wants_keyboard(void) { return text_active; }
 float ui_panel_width(void) { return panel_open ? PANEL_WIDTH : 0.0f; }
-
-/* ----------------------------------------------------------------------------
- * Presets de um clique: configuram formas, mistura, deformações e textura
- * de uma vez, para a demonstração.
- * ------------------------------------------------------------------------- */
-typedef struct {
-    const char *label;  /* texto do botão (curto, cabe em meia linha) */
-    const char *hint;   /* descrição completa (dica ao passar o mouse) */
-    int from, to;       /* formas A e B */
-    int auto_play;      /* 1 = anima de A para B (e segue o ciclo) */
-    float taper, twist, bend;
-    int texture;
-    float tex_scale;
-    int tex_multiply;
-} Preset;
-
-static const Preset presets[UI_PRESET_COUNT - 1] = {
-    {"Esfera torcida", "Esfera xadrez torcida: a esfera é simétrica em Y, só a textura revela o twist",
-     SHAPE_SPHERE, SHAPE_SPHERE, 0, 0.0f, 3.0f, 0.0f, TEX_CHECKER, 2.0f, 1},
-    {"Cubo -> Toro", "Cubo -> Toro com listras (morph automático)",
-     SHAPE_CUBE, SHAPE_TORUS, 1, 0.0f, 0.0f, 0.0f, TEX_STRIPES, 1.0f, 1},
-    {"Cilindro dobrado", "Cilindro dobrado (bend = 1) com grade UV",
-     SHAPE_CYLINDER, SHAPE_CYLINDER, 0, 0.0f, 0.0f, 1.0f, TEX_UV_GRID, 1.0f, 0},
-    {"Cone por taper", "Cilindro afunilado (taper = -0.8) com xadrez",
-     SHAPE_CYLINDER, SHAPE_CYLINDER, 0, -0.8f, 0.0f, 0.0f, TEX_CHECKER, 1.0f, 1},
-    {"Plano -> Esfera", "Plano vira esfera (morph automático) com grade UV",
-     SHAPE_PLANE, SHAPE_SPHERE, 1, 0.0f, 0.0f, 0.0f, TEX_UV_GRID, 1.0f, 0},
-};
-
-const char *ui_preset_name(int id) {
-    if (id == UI_PRESET_COUNT - 1) return "Resetar tudo";
-    return (id >= 0 && id < UI_PRESET_COUNT - 1) ? presets[id].hint : "?";
-}
-
-void ui_apply_preset(int id) {
-    const Preset *p;
-    if (id == UI_PRESET_COUNT - 1) { /* último botão: volta ao estado inicial */
-        app_reset_state();
-        app_bind_shape_pair();
-        return;
-    }
-    if (id < 0 || id >= UI_PRESET_COUNT - 1) return;
-    p = &presets[id];
-
-    app_set_shapes(p->from, p->to);
-    app.morph.t = 0.0f;
-    app.morph.hold = HOLD_TIME;
-    app.morph.auto_play = p->auto_play;
-    app.morph.queued = -1; /* preset descarta destino que estava na fila */
-
-    app.deform.taper = p->taper;
-    app.deform.twist = p->twist;
-    app.deform.bend = p->bend;
-
-    app.tex.current = p->texture;
-    app.tex.scale = p->tex_scale;
-    app.tex.multiply = p->tex_multiply;
-}
 
 /* ----------------------------------------------------------------------------
  * Pequenos componentes reutilizados
@@ -155,12 +97,31 @@ static int slider_row(const char *label, float *value, float lo, float hi, float
 /* Linha "rótulo | combo de formas". Retorna a forma escolhida. */
 static int shape_combo_row(const char *label, int selected) {
     static const float ratio[] = {0.42f, 0.58f};
-    const char *names[SHAPE_COUNT];
+    const char *names[MAX_SHAPES];
     int i;
-    for (i = 0; i < SHAPE_COUNT; ++i) names[i] = app.shapes[i].name;
+    for (i = 0; i < app.shape_count; ++i) names[i] = app.shapes[i].name;
     nk_layout_row(ctx, NK_DYNAMIC, ROW_H, 2, ratio);
     nk_label(ctx, label, NK_TEXT_LEFT);
-    return nk_combo(ctx, names, SHAPE_COUNT, selected, (int)ROW_H, nk_vec2(180, 160));
+    return nk_combo(ctx, names, app.shape_count, selected, (int)ROW_H,
+                    nk_vec2(180, (ROW_H + 4) * app.shape_count + 8));
+}
+
+/* Mensagem de resultado (verde = ok, vermelho = erro), com quebra de linha. */
+static void message_row(const Message *m) {
+    if (!m->text[0]) return;
+    nk_layout_row_dynamic(ctx, 34, 1);
+    nk_label_colored_wrap(ctx, m->text, m->is_error ? nk_rgb(255, 110, 100) : nk_rgb(130, 220, 130));
+}
+
+/* Botão de largura total. */
+static int button_row(const char *label) {
+    nk_layout_row_dynamic(ctx, ROW_H + 2, 1);
+    return nk_button_label(ctx, label);
+}
+
+/* Avisa no painel quando não há janela de arquivos no sistema. */
+static void no_dialog(Message *m) {
+    app_message(m, 1, "Erro: nenhuma janela de arquivos disponível (instale o zenity).");
 }
 
 /* Checkbox ligada direto a um int do estado. Retorna 1 se mudou. */
@@ -176,19 +137,9 @@ static int checkbox_row(const char *label, int *value) {
 /* ----------------------------------------------------------------------------
  * Seções do painel
  * ------------------------------------------------------------------------- */
-static void section_presets(void) {
-    int i;
-    nk_layout_row_dynamic(ctx, ROW_H + 2, 2);
-    for (i = 0; i < UI_PRESET_COUNT; ++i) {
-        const char *label = (i < UI_PRESET_COUNT - 1) ? presets[i].label : "Resetar tudo";
-        if (nk_widget_is_hovered(ctx)) nk_tooltip(ctx, ui_preset_name(i));
-        if (nk_button_label(ctx, label)) ui_apply_preset(i);
-    }
-}
-
 static void section_shapes(void) {
     MorphState *m = &app.morph;
-    int a, b, smooth = m->smooth;
+    int a, b;
     float t = m->t;
     char text[96];
 
@@ -199,7 +150,7 @@ static void section_shapes(void) {
     if (slider_row("t", &t, 0.0f, 1.0f, 0.001f)) app_set_t(t);
 
     nk_layout_row_dynamic(ctx, ROW_H, 1);
-    snprintf(text, sizeof(text), "Mistura exibida: %.0f%% de %s", app_eased_t() * 100.0f,
+    snprintf(text, sizeof(text), "Mistura exibida: %.0f%% de %s", m->t * 100.0f,
              app.shapes[m->to].name);
     nk_label(ctx, text, NK_TEXT_LEFT);
     if (m->queued >= 0) {
@@ -208,7 +159,16 @@ static void section_shapes(void) {
     }
 
     checkbox_row("Animação automática (ESPAÇO)", &m->auto_play);
-    if (checkbox_row("Curva suave - smoothstep (S)", &smooth)) app_set_smooth(smooth);
+
+    /* Abre a janela do sistema para escolher um modelo 3D (.obj). */
+    if (button_row("Adicionar forma (.obj)...")) {
+        char path[1024];
+        int r = dialog_open_file("Adicionar forma 3D", "Modelos 3D (OBJ)", "*.obj *.OBJ", path,
+                                 sizeof(path));
+        if (r == DIALOG_OK) app_add_shape_file(path);
+        else if (r == DIALOG_UNAVAILABLE) no_dialog(&app.shape_msg);
+    }
+    message_row(&app.shape_msg);
 }
 
 static void section_deform(void) {
@@ -225,10 +185,8 @@ static void section_deform(void) {
 
 static void section_texture(void) {
     static const float ratio[] = {0.42f, 0.58f};
-    static const float path_ratio[] = {0.72f, 0.28f};
     TexState *tx = &app.tex;
     const char *names[TEX_COUNT];
-    nk_flags edit;
     int i, sel;
 
     for (i = 0; i < TEX_COUNT; ++i) names[i] = texture_name(i);
@@ -237,8 +195,7 @@ static void section_texture(void) {
     sel = nk_combo(ctx, names, TEX_COUNT, tx->current, (int)ROW_H, nk_vec2(180, 160));
     if (sel != tx->current) {
         if (sel == TEX_IMAGE && !tx->ids[TEX_IMAGE]) {
-            snprintf(tx->message, sizeof(tx->message), "Nenhuma imagem carregada ainda.");
-            tx->message_is_error = 1;
+            app_message(&tx->msg, 1, "Nenhuma imagem carregada ainda: use o botão abaixo.");
         } else {
             tx->current = sel;
         }
@@ -247,17 +204,14 @@ static void section_texture(void) {
     slider_row("Repetição", &tx->scale, TEX_SCALE_MIN, TEX_SCALE_MAX, 0.05f);
     checkbox_row("Multiplicar pela cor da forma", &tx->multiply);
 
-    /* Caminho da imagem: Enter ou o botão carregam. Arrastar o arquivo
+    /* Abre a janela do sistema para escolher a imagem. Arrastar o arquivo
      * para a janela também funciona (drop_callback em main.c). */
-    nk_layout_row(ctx, NK_DYNAMIC, ROW_H + 2, 2, path_ratio);
-    edit = nk_edit_string_zero_terminated(ctx, NK_EDIT_FIELD | NK_EDIT_SIG_ENTER, tx->path,
-                                          (int)sizeof(tx->path), nk_filter_default);
-    if (edit & NK_EDIT_ACTIVE) text_active = 1;
-    if (nk_widget_is_hovered(ctx))
-        nk_tooltip(ctx, "Carrega o PNG/JPG do caminho ao lado (ou arraste o arquivo para a janela)");
-    if (nk_button_label(ctx, "Carregar") || (edit & NK_EDIT_COMMITED)) {
-        nk_edit_unfocus(ctx); /* libera o teclado para os atalhos de novo */
-        app_load_image(tx->path);
+    if (button_row("Adicionar imagem (PNG/JPG)...")) {
+        char path[1024];
+        int r = dialog_open_file("Escolher imagem de textura", "Imagens (PNG, JPG)",
+                                 "*.png *.jpg *.jpeg *.PNG *.JPG *.JPEG", path, sizeof(path));
+        if (r == DIALOG_OK) app_load_image(path);
+        else if (r == DIALOG_UNAVAILABLE) no_dialog(&tx->msg);
     }
 
     if (tx->ids[TEX_IMAGE]) {
@@ -266,11 +220,7 @@ static void section_texture(void) {
         snprintf(text, sizeof(text), "Imagem: %s", tx->image_info);
         nk_label_colored(ctx, text, NK_TEXT_LEFT, nk_rgb(150, 150, 150));
     }
-    if (tx->message[0]) {
-        nk_layout_row_dynamic(ctx, 34, 1);
-        nk_label_colored_wrap(ctx, tx->message,
-                              tx->message_is_error ? nk_rgb(255, 110, 100) : nk_rgb(130, 220, 130));
-    }
+    message_row(&tx->msg);
 }
 
 static void section_view(void) {
@@ -293,18 +243,39 @@ static void section_view(void) {
 
 static void section_help(void) {
     static const char *lines[] = {
-        "ESPAÇO   pausa / retoma a animação",
+        "ESPAÇO   liga / pausa a animação",
         "<- ->    controla o morph (segurar)",
-        "1 a 5    escolhe a próxima forma",
-        "S        curva linear / smoothstep",
-        "W        sólido / sólido+malha / malha",
+        NULL, /* teclas das formas: montada abaixo */
+        "W        modo de desenho (malha)",
         "R        rotação do objeto",
-        "Mouse    arrastar orbita, scroll = zoom",
+        "Mouse    arrastar gira, scroll zoom",
         "ESC      sair",
     };
+    char keys[64];
     size_t i;
+    /* "1 a 5" com as formas prontas; cresce quando uma forma é adicionada. */
+    snprintf(keys, sizeof(keys), "1 a %d    escolhe a próxima forma", app.shape_count);
     nk_layout_row_dynamic(ctx, 16, 1);
-    for (i = 0; i < sizeof(lines) / sizeof(lines[0]); ++i) nk_label(ctx, lines[i], NK_TEXT_LEFT);
+    for (i = 0; i < sizeof(lines) / sizeof(lines[0]); ++i)
+        nk_label(ctx, lines[i] ? lines[i] : keys, NK_TEXT_LEFT);
+}
+
+/* Fim do painel: resetar tudo e exportar o modelo 3D. */
+static void section_bottom(void) {
+    nk_layout_row_dynamic(ctx, 6, 1);
+    nk_spacing(ctx, 1);
+    nk_layout_row_dynamic(ctx, ROW_H + 6, 2);
+    if (nk_widget_is_hovered(ctx)) nk_tooltip(ctx, "Volta tudo ao estado inicial (as formas adicionadas continuam)");
+    if (nk_button_label(ctx, "Resetar tudo")) app_reset_state();
+    if (nk_widget_is_hovered(ctx)) nk_tooltip(ctx, "Salva a forma que está na tela (com as deformações) num arquivo .obj");
+    if (nk_button_label(ctx, "Exportar 3D (.obj)...")) {
+        char path[1024];
+        int r = dialog_save_file("Exportar modelo 3D", "modelo.obj", "Modelos 3D (OBJ)", "*.obj",
+                                 path, sizeof(path));
+        if (r == DIALOG_OK) export_model(path);
+        else if (r == DIALOG_UNAVAILABLE) no_dialog(&app.export_msg);
+    }
+    message_row(&app.export_msg);
 }
 
 /* ----------------------------------------------------------------------------
@@ -315,7 +286,6 @@ void ui_frame(void) {
     struct nk_rect bounds;
     const nk_flags flags = NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE;
 
-    text_active = 0;
     nk_glfw3_new_frame(&nk_glfw_state);
 
     /* Painel preso à esquerda, com a altura da janela. */
@@ -323,31 +293,29 @@ void ui_frame(void) {
     bounds = nk_rect(0, 0, PANEL_WIDTH, (float)win_h);
     if (nk_window_find(ctx, PANEL_NAME)) nk_window_set_bounds(ctx, PANEL_NAME, bounds);
 
+    /* Ao abrir, só "Forma e mistura" e "Atalhos" vêm expandidas. */
     if (nk_begin_titled(ctx, PANEL_NAME, PANEL_TITLE, bounds, flags)) {
-        if (nk_tree_push(ctx, NK_TREE_TAB, "Presets (um clique)", NK_MAXIMIZED)) {
-            section_presets();
-            nk_tree_pop(ctx);
-        }
         if (nk_tree_push(ctx, NK_TREE_TAB, "Forma e mistura", NK_MAXIMIZED)) {
             section_shapes();
             nk_tree_pop(ctx);
         }
-        if (nk_tree_push(ctx, NK_TREE_TAB, "Deformações (Barr)", NK_MAXIMIZED)) {
+        if (nk_tree_push(ctx, NK_TREE_TAB, "Deformações (Barr)", NK_MINIMIZED)) {
             section_deform();
             nk_tree_pop(ctx);
         }
-        if (nk_tree_push(ctx, NK_TREE_TAB, "Textura", NK_MAXIMIZED)) {
+        if (nk_tree_push(ctx, NK_TREE_TAB, "Textura", NK_MINIMIZED)) {
             section_texture();
             nk_tree_pop(ctx);
         }
-        if (nk_tree_push(ctx, NK_TREE_TAB, "Visualização", NK_MAXIMIZED)) {
+        if (nk_tree_push(ctx, NK_TREE_TAB, "Visualização", NK_MINIMIZED)) {
             section_view();
             nk_tree_pop(ctx);
         }
-        if (nk_tree_push(ctx, NK_TREE_TAB, "Atalhos de teclado", NK_MINIMIZED)) {
+        if (nk_tree_push(ctx, NK_TREE_TAB, "Atalhos de teclado", NK_MAXIMIZED)) {
             section_help();
             nk_tree_pop(ctx);
         }
+        section_bottom();
     }
     panel_open = !nk_window_is_collapsed(ctx, PANEL_NAME);
     nk_end(ctx);

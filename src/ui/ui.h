@@ -16,13 +16,6 @@ float ui_panel_width(void);
 
 /* O mouse está sobre o painel? (então não orbita a câmera nem dá zoom) */
 int ui_wants_mouse(void);
-/* Um campo de texto está sendo editado? (então os atalhos não disparam) */
-int ui_wants_keyboard(void);
-
-/* Presets de um clique (os mesmos botões do painel). */
-#define UI_PRESET_COUNT 6
-const char *ui_preset_name(int id);
-void ui_apply_preset(int id); /* id em [0, UI_PRESET_COUNT) */
 
 /* Eventos repassados pelos callbacks do main.c. */
 void ui_on_key(GLFWwindow *win, int key, int scancode, int action, int mods);

@@ -12,6 +12,13 @@
  *   4. O vertex shader interpola posição e normal com o fator t.
  *   5. O painel (ui.c, Nuklear) e o teclado alteram o mesmo estado (app.c).
  *
+ * Organização das pastas de src/:
+ *   app/       estado do programa e lógica do morph
+ *   geometry/  matemática, formas na grade, deformações, encaixe de modelos .obj
+ *   render/    shaders e texturas (OpenGL)
+ *   io/        arquivos: ler/escrever .obj, exportar, janela de escolher arquivo
+ *   ui/        painel de controle (Nuklear)
+ *
  * Este arquivo cuida da janela, do laço principal, da entrada e do desenho. */
 #include <glad/gl.h>
 #define GLFW_INCLUDE_NONE
@@ -21,12 +28,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "app.h"
-#include "mathutil.h"
-#include "shader.h"
-#include "shapes.h"
-#include "texture.h"
-#include "ui.h"
+#include "app/app.h"
+#include "geometry/mathutil.h"
+#include "render/shader.h"
+#include "geometry/shapes.h"
+#include "render/texture.h"
+#include "io/export.h"
+#include "ui/ui.h"
 
 #define WINDOW_W 1280
 #define WINDOW_H 900     /* altura desejada (cabe o painel inteiro)... */
@@ -39,11 +47,13 @@
 /* Gera as formas, envia tudo para a GPU e configura o VAO. Retorna 0 se faltar memória. */
 static int setup_geometry(void) {
     unsigned int *indices = (unsigned int *)malloc(INDEX_COUNT * sizeof(unsigned int));
-    float *data = (float *)malloc(VERTEX_COUNT * 6 * sizeof(float)); /* também serve para os UVs */
-    int s, i, ok = 0;
+    float *data = (float *)malloc(VERTEX_COUNT * 2 * sizeof(float)); /* UVs */
+    int s, ok = 0;
     GLuint a;
 
-    if (!indices || !data || !shapes_build(app.shapes)) goto done;
+    if (!indices || !data) goto done;
+    app.shape_count = SHAPE_BUILTIN_COUNT; /* para o cleanup liberar o que foi alocado */
+    if (!shapes_build(app.shapes)) goto done;
     grid_build_indices(indices);
 
     glGenVertexArrays(1, &app.vao);
@@ -55,18 +65,9 @@ static int setup_geometry(void) {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, INDEX_COUNT * sizeof(unsigned int), indices,
                  GL_STATIC_DRAW);
 
-    /* Um VBO por forma, com [px py pz nx ny nz] por vértice. */
-    glGenBuffers(SHAPE_COUNT, app.vbos);
-    for (s = 0; s < SHAPE_COUNT; ++s) {
-        const Shape *sh = &app.shapes[s];
-        for (i = 0; i < VERTEX_COUNT; ++i) {
-            float *d = &data[i * 6];
-            d[0] = sh->positions[i].x; d[1] = sh->positions[i].y; d[2] = sh->positions[i].z;
-            d[3] = sh->normals[i].x;   d[4] = sh->normals[i].y;   d[5] = sh->normals[i].z;
-        }
-        glBindBuffer(GL_ARRAY_BUFFER, app.vbos[s]);
-        glBufferData(GL_ARRAY_BUFFER, VERTEX_COUNT * 6 * sizeof(float), data, GL_STATIC_DRAW);
-    }
+    /* Um VBO por forma, com [px py pz nx ny nz] por vértice. As formas
+     * adicionadas depois (.obj) ganham o seu VBO do mesmo jeito. */
+    for (s = 0; s < app.shape_count; ++s) app_upload_shape(s);
 
     /* Coordenadas de textura (u,v): um VBO só, ligado fixo no atributo 4,
      * porque são as mesmas para todas as formas. */
@@ -137,7 +138,7 @@ static void render_scene(int x0, int width, int height) {
     proj = m4_perspective(0.8f, (float)width / height, 0.1f, 100.0f);
     model = m4_rotate_y(app.obj_angle);
 
-    t = app_eased_t();
+    t = m->t;
     color = v3_lerp(app.shapes[m->from].color, app.shapes[m->to].color, t);
 
     glUseProgram(app.program);
@@ -190,9 +191,9 @@ static void update_title(GLFWwindow *win, float fps) {
     char title[320], next[64] = "";
     if (m->queued >= 0) snprintf(next, sizeof(next), " (próximo: %s)", app.shapes[m->queued].name);
     snprintf(title, sizeof(title),
-             "Laboratório de Deformação | %s -> %s%s | t = %.2f | %s | curva: %s | %s | %.0f FPS",
-             app.shapes[m->from].name, app.shapes[m->to].name, next, app_eased_t(),
-             m->auto_play ? "automático" : "pausado", m->smooth ? "smoothstep" : "linear",
+             "Laboratório de Deformação | %s -> %s%s | t = %.2f | %s | %s | %.0f FPS",
+             app.shapes[m->from].name, app.shapes[m->to].name, next, m->t,
+             m->auto_play ? "automático" : "pausado",
              mode_names[app.render_mode], fps);
     glfwSetWindowTitle(win, title);
 }
@@ -200,20 +201,19 @@ static void update_title(GLFWwindow *win, float fps) {
 static void print_help(void) {
     int i;
     printf("\n=== Laboratorio de Deformacao - Controles ===\n"
-           "  Painel a esquerda: formas, mistura, deformacoes, texturas e presets\n"
-           "  ESPACO        pausa / retoma a animacao automatica\n"
+           "  Painel a esquerda: formas, mistura, deformacoes, texturas e exportacao\n"
+           "  ESPACO        liga / pausa a animacao automatica\n"
            "  SETAS < >     controla o morph manualmente (t diminui / aumenta)\n"
-           "  1 a %d         escolhe a proxima forma de destino\n"
-           "  S             alterna curva linear / suavizada (smoothstep)\n"
+           "  1 a %d         escolhe a proxima forma de destino (5 = Plano)\n"
            "  W             alterna solido / solido+malha / so malha\n"
            "  R             liga / desliga a rotacao do objeto\n"
            "  Mouse (esq.)  arrasta para orbitar a camera\n"
            "  Scroll        zoom\n"
            "  ESC           sair\n"
-           "  Arraste um PNG/JPG para a janela para usar como textura\n\n"
+           "  Arraste um PNG/JPG (textura) ou um .obj (forma) para a janela\n\n"
            "Formas:",
-           SHAPE_COUNT);
-    for (i = 0; i < SHAPE_COUNT; ++i) printf("  [%d] %s", i + 1, app.shapes[i].name);
+           app.shape_count);
+    for (i = 0; i < app.shape_count; ++i) printf("  [%d] %s", i + 1, app.shapes[i].name);
     printf("\n\n");
 }
 
@@ -245,17 +245,18 @@ static int save_ppm(const char *path, int w, int h) {
 static void key_callback(GLFWwindow *win, int key, int scancode, int action, int mods) {
     ui_on_key(win, key, scancode, action, mods);
     if (action != GLFW_PRESS) return;
-    if (ui_wants_keyboard()) return; /* digitando num campo de texto do painel */
 
     switch (key) {
         case GLFW_KEY_ESCAPE: glfwSetWindowShouldClose(win, GLFW_TRUE); break;
         case GLFW_KEY_SPACE:  app.morph.auto_play = !app.morph.auto_play; break;
-        case GLFW_KEY_S:      app_set_smooth(!app.morph.smooth); break;
         case GLFW_KEY_W:      app.render_mode = (app.render_mode + 1) % RENDER_MODE_COUNT; break;
         case GLFW_KEY_R:      app.rotate = !app.rotate; break;
         default:
-            if (key >= GLFW_KEY_1 && key < GLFW_KEY_1 + SHAPE_COUNT)
+            /* Números de cima do teclado ou do teclado numérico: 1 = Esfera ... 5 = Plano. */
+            if (key >= GLFW_KEY_1 && key <= GLFW_KEY_9 && key - GLFW_KEY_1 < app.shape_count)
                 app_choose_target(key - GLFW_KEY_1);
+            else if (key >= GLFW_KEY_KP_1 && key <= GLFW_KEY_KP_9 && key - GLFW_KEY_KP_1 < app.shape_count)
+                app_choose_target(key - GLFW_KEY_KP_1);
     }
 }
 
@@ -284,10 +285,24 @@ static void cursor_callback(GLFWwindow *win, double x, double y) {
     c->last_y = y;
 }
 
-/* Arrastar um arquivo para a janela carrega a imagem como textura. */
+/* Diz se o caminho termina com a extensão dada (sem diferenciar maiúsculas). */
+static int has_extension(const char *path, const char *ext) {
+    size_t n = strlen(path), e = strlen(ext), i;
+    if (n < e) return 0;
+    for (i = 0; i < e; ++i) {
+        char c = path[n - e + i];
+        if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
+        if (c != ext[i]) return 0;
+    }
+    return 1;
+}
+
+/* Arrastar um arquivo para a janela: .obj vira forma, o resto é tentado como imagem. */
 static void drop_callback(GLFWwindow *win, int count, const char **paths) {
     (void)win;
-    if (count > 0) app_load_image(paths[0]);
+    if (count <= 0) return;
+    if (has_extension(paths[0], ".obj")) app_add_shape_file(paths[0]);
+    else app_load_image(paths[0]);
 }
 
 static void scroll_callback(GLFWwindow *win, double dx, double dy) {
@@ -305,11 +320,13 @@ static void cleanup(void) {
     for (i = 0; i < TEX_COUNT; ++i)
         if (app.tex.ids[i]) glDeleteTextures(1, &app.tex.ids[i]);
     if (app.uv_vbo) glDeleteBuffers(1, &app.uv_vbo);
-    if (app.vbos[0]) glDeleteBuffers(SHAPE_COUNT, app.vbos);
+    for (i = 0; i < app.shape_count; ++i) {
+        if (app.vbos[i]) glDeleteBuffers(1, &app.vbos[i]);
+        shape_free(&app.shapes[i]);
+    }
     if (app.ebo) glDeleteBuffers(1, &app.ebo);
     if (app.vao) glDeleteVertexArrays(1, &app.vao);
     if (app.program) glDeleteProgram(app.program);
-    shapes_free(app.shapes);
 }
 
 /* --------------------------------------------------------------------------*/
@@ -318,11 +335,13 @@ int main(int argc, char **argv) {
     const GLFWvidmode *mode;
     int win_height = WINDOW_H;
     char vert_path[512], frag_path[512];
-    /* Opções de teste: --captura arquivo.ppm salva um quadro e sai;
-     * --quadros N escolhe qual quadro (passo de tempo fixo de 1/60 s). */
-    const char *capture_path = NULL;
-    const char *image_path = NULL; /* argumento opcional: imagem para a textura */
-    int preset = 0;                /* --preset N: aplica o preset N (1..6) ao abrir */
+    /* Opções de linha de comando (todas opcionais):
+     *   imagem.png            usa a imagem como textura
+     *   --forma modelo.obj    adiciona o modelo como forma
+     *   --exportar saida.obj  exporta a forma exibida logo ao abrir
+     *   --captura arq.ppm     salva um quadro da tela e sai (testes)
+     *   --quadros N           qual quadro capturar (passo fixo de 1/60 s) */
+    const char *capture_path = NULL, *image_path = NULL, *shape_path = NULL, *export_path = NULL;
     int capture_frame = 100;
     double last, title_timer = 0.0;
     int frames = 0, frame_number = 0, i;
@@ -330,7 +349,8 @@ int main(int argc, char **argv) {
     for (i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--captura") == 0 && i + 1 < argc) capture_path = argv[++i];
         else if (strcmp(argv[i], "--quadros") == 0 && i + 1 < argc) capture_frame = atoi(argv[++i]);
-        else if (strcmp(argv[i], "--preset") == 0 && i + 1 < argc) preset = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--forma") == 0 && i + 1 < argc) shape_path = argv[++i];
+        else if (strcmp(argv[i], "--exportar") == 0 && i + 1 < argc) export_path = argv[++i];
         else if (argv[i][0] != '-' && !image_path) image_path = argv[i];
         else fprintf(stderr, "Aviso: opcao desconhecida '%s'\n", argv[i]);
     }
@@ -391,7 +411,8 @@ int main(int argc, char **argv) {
     cache_uniforms();
     print_help();
     if (image_path) app_load_image(image_path);
-    if (preset >= 1 && preset <= UI_PRESET_COUNT) ui_apply_preset(preset - 1);
+    if (shape_path) app_add_shape_file(shape_path);
+    if (export_path) export_model(export_path);
 
     last = glfwGetTime();
     while (!glfwWindowShouldClose(win)) {
@@ -399,17 +420,18 @@ int main(int argc, char **argv) {
         double now = glfwGetTime();
         float dt = (float)(now - last);
         last = now;
+        /* Depois de uma janela de arquivo (que congela o programa) o dt
+         * seria enorme e o morph pularia: limitamos o passo. */
+        if (dt > 0.1f) dt = 0.1f;
         /* Na captura usamos passo fixo, para o resultado ser reprodutível. */
         if (capture_path) dt = 1.0f / 60.0f;
 
         glfwPollEvents();
         ui_frame(); /* painel primeiro: ele pode alterar o estado deste quadro */
 
-        /* Setas: controle manual do morph (ignoradas ao digitar no painel). */
-        if (!ui_wants_keyboard()) {
-            if (glfwGetKey(win, GLFW_KEY_RIGHT) == GLFW_PRESS) manual_dir += 1;
-            if (glfwGetKey(win, GLFW_KEY_LEFT) == GLFW_PRESS) manual_dir -= 1;
-        }
+        /* Setas: controle manual do morph. */
+        if (glfwGetKey(win, GLFW_KEY_RIGHT) == GLFW_PRESS) manual_dir += 1;
+        if (glfwGetKey(win, GLFW_KEY_LEFT) == GLFW_PRESS) manual_dir -= 1;
         app_update(dt, manual_dir);
 
         /* A cena ocupa a área à direita do painel (em pixels do framebuffer). */

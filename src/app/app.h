@@ -9,8 +9,9 @@
 
 #include <glad/gl.h>
 
-#include "shapes.h"
-#include "texture.h"
+#include "geometry/deform.h"
+#include "geometry/shapes.h"
+#include "render/texture.h"
 
 /* ----------------------------------------------------------------------------
  * Parâmetros da animação e da câmera
@@ -31,10 +32,9 @@
 typedef struct {
     int from;   /* forma A (origem) */
     int to;     /* forma B (destino) */
-    float t;    /* progresso LINEAR em [0,1]; a forma usa eased(t) */
+    float t;    /* progresso da mistura em [0,1] (0 = forma A, 1 = forma B) */
     float hold; /* tempo restante de pausa na forma atual (modo automático) */
     int auto_play;
-    int smooth; /* usa curva de suavização (smoothstep) */
     int queued; /* destino escolhido pelo usuário durante um morph (-1 = nenhum) */
 } MorphState;
 
@@ -44,19 +44,13 @@ typedef struct {
     double last_x, last_y;
 } Camera;
 
-/* Deformações de Barr aplicadas depois da mistura (ver morph.vert). */
-#define TAPER_MIN -0.9f
-#define TAPER_MAX 0.9f
-#define TWIST_MIN -6.0f
-#define TWIST_MAX 6.0f
-#define BEND_MIN -1.5f
-#define BEND_MAX 1.5f
+/* As deformações de Barr (struct Deform) estão em geometry/deform.h. */
 
+/* Mensagem curta mostrada no painel (verde = deu certo, vermelho = erro). */
 typedef struct {
-    float taper; /* afunilamento: x,z *= 1 + taper*y */
-    float twist; /* torção: radianos por unidade de y */
-    float bend;  /* dobra: curvatura (1/raio) */
-} Deform;
+    char text[256];
+    int is_error;
+} Message;
 
 /* Textura aplicada sobre a forma. */
 #define TEX_SCALE_MIN 0.5f
@@ -67,10 +61,9 @@ typedef struct {
     GLuint ids[TEX_COUNT];
     float scale;         /* "Repetição": multiplica o (u,v) */
     int multiply;        /* multiplica a textura pela cor da forma */
-    char path[512];      /* campo de texto do painel */
+    char path[512];      /* arquivo da imagem carregada (copiado ao exportar) */
     char image_info[96]; /* nome/tamanho da imagem carregada */
-    char message[256];   /* última mensagem (sucesso ou erro) */
-    int message_is_error;
+    Message msg;
 } TexState;
 
 enum { RENDER_SOLID = 0, RENDER_SOLID_WIRE, RENDER_WIRE, RENDER_MODE_COUNT };
@@ -84,8 +77,9 @@ typedef struct {
 
 typedef struct {
     /* Geometria (CPU e GPU) */
-    Shape shapes[SHAPE_COUNT];
-    GLuint vbos[SHAPE_COUNT]; /* um VBO por forma (posição + normal intercaladas) */
+    Shape shapes[MAX_SHAPES]; /* as prontas e depois as adicionadas (.obj) */
+    int shape_count;
+    GLuint vbos[MAX_SHAPES];  /* um VBO por forma (posição + normal intercaladas) */
     GLuint uv_vbo;            /* coordenadas (u,v) da grade, compartilhadas */
     GLuint vao, ebo, program;
     Uniforms loc;
@@ -98,6 +92,8 @@ typedef struct {
     int render_mode;
     int rotate;
     float obj_angle;
+    Message shape_msg;  /* resultado de "Adicionar forma" */
+    Message export_msg; /* resultado de "Exportar" */
 } App;
 
 extern App app;
@@ -105,7 +101,7 @@ extern App app;
 /* ----------------------------------------------------------------------------
  * Operações (app.c)
  * ------------------------------------------------------------------------- */
-void app_reset_state(void);  /* estado inicial (sem mexer em recursos da GPU) */
+void app_reset_state(void);  /* estado inicial (mantém as formas adicionadas) */
 void app_reset_camera(void);
 void app_reset_deform(void);
 void app_reset_texture(void); /* volta a "Nenhuma" (mantém a imagem carregada) */
@@ -114,13 +110,22 @@ void app_reset_texture(void); /* volta a "Nenhuma" (mantém a imagem carregada) 
  * no painel e no terminal e mantém a textura atual. Retorna 1 se carregou. */
 int app_load_image(const char *path);
 
-float app_eased_t(void); /* t depois da curva (linear ou smoothstep) */
+/* Lê um modelo .obj, encaixa na grade (geometry/mesh_fit.h), envia para a
+ * GPU e já mostra: a nova forma vira a forma A, parada (t = 0), pronta
+ * para ser deformada. Retorna 1 se deu certo (resultado em shape_msg). */
+int app_add_shape_file(const char *path);
+
+/* Envia a forma 'index' para o seu VBO (cria o VBO se preciso). */
+void app_upload_shape(int index);
+
+/* Mostra o resultado de uma operação no painel e no terminal. */
+void app_message(Message *m, int is_error, const char *text);
+
 
 void app_bind_shape_pair(void);             /* religa A/B nos atributos do VAO */
 void app_set_shapes(int from, int to);      /* escolha direta de A e B (painel) */
-void app_choose_target(int target);         /* teclas 1..5 */
+void app_choose_target(int target);         /* teclas 1..9 */
 void app_set_t(float t);                    /* slider: posiciona o morph e pausa */
-void app_set_smooth(int smooth);            /* troca a curva SEM salto na forma */
 void app_update(float dt, int manual_dir);  /* manual_dir: -1, 0 ou +1 (setas) */
 
 #endif /* APP_H */

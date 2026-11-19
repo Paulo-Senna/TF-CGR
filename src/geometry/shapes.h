@@ -7,7 +7,7 @@
 #ifndef SHAPES_H
 #define SHAPES_H
 
-#include "mathutil.h"
+#include "geometry/mathutil.h"
 
 /* Resolução da grade paramétrica (igual para todas as formas). */
 #define GRID_U 64 /* divisões em torno do eixo Y (longitude) */
@@ -20,26 +20,32 @@
  * falhasse. As arestas do cubo/cilindro precisam cair em linhas da grade. */
 typedef char grid_alinhada_com_arestas[(GRID_U % 8 == 0 && GRID_V % 4 == 0) ? 1 : -1];
 
-/* Formas disponíveis (a ordem é a das teclas 1, 2, 3...). */
+/* Formas prontas (a ordem é a das teclas 1, 2, 3...). As formas
+ * adicionadas pelo usuário (arquivos .obj) entram depois delas. */
 enum {
     SHAPE_SPHERE = 0,
     SHAPE_CUBE,
     SHAPE_TORUS,
     SHAPE_CYLINDER,
     SHAPE_PLANE,
-    SHAPE_COUNT
+    SHAPE_BUILTIN_COUNT
 };
 
+#define MAX_SHAPES 9 /* teclas 1 a 9 */
+
 typedef struct {
-    const char *name;
+    char name[32];
     Vec3 *positions; /* VERTEX_COUNT posições, uma por vértice da grade */
     Vec3 *normals;   /* VERTEX_COUNT normais */
     Vec3 color;      /* cor base da forma */
 } Shape;
 
-/* Preenche shapes[0..SHAPE_COUNT-1]. Retorna 0 se faltar memória. */
-int shapes_build(Shape shapes[SHAPE_COUNT]);
-void shapes_free(Shape shapes[SHAPE_COUNT]);
+/* Preenche shapes[0..SHAPE_BUILTIN_COUNT-1]. Retorna 0 se faltar memória. */
+int shapes_build(Shape *shapes);
+void shape_free(Shape *s);
+
+/* Direção na esfera unitária para o par (u, v) da grade. */
+Vec3 grid_sphere_dir(float u, float v);
 
 /* Índices dos triângulos da grade (compartilhados por todas as formas).
  * 'out' precisa ter INDEX_COUNT posições. */

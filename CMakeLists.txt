@@ -27,14 +27,24 @@ target_compile_options(external PRIVATE -w)
 
 add_executable(morph3d
     src/main.c
-    src/app.c
-    src/shapes.c
-    src/shader.c
-    src/texture.c
-    src/ui.c
+    src/app/app.c
+    src/geometry/shapes.c
+    src/geometry/deform.c
+    src/geometry/mesh_fit.c
+    src/render/shader.c
+    src/render/texture.c
+    src/io/obj.c
+    src/io/export.c
+    src/io/file_dialog.c
+    src/ui/ui.c
 )
 target_include_directories(morph3d PRIVATE src)
 target_compile_options(morph3d PRIVATE -Wall -Wextra)
-target_link_libraries(morph3d PRIVATE external glfw OpenGL::GL m ${CMAKE_DL_LIBS})
+target_link_libraries(morph3d PRIVATE external glfw OpenGL::GL ${CMAKE_DL_LIBS})
+if(WIN32)
+    target_link_libraries(morph3d PRIVATE comdlg32) # janela de abrir/salvar arquivo
+else()
+    target_link_libraries(morph3d PRIVATE m)
+endif()
 # Permite rodar o executável de qualquer pasta (achar os shaders)
 target_compile_definitions(morph3d PRIVATE SHADER_DIR="${CMAKE_SOURCE_DIR}/shaders")
