@@ -1,2 +1,0 @@
-/usr/bin/ar qc libexternal.a CMakeFiles/external.dir/external/glad/src/gl.c.o CMakeFiles/external.dir/external/nuklear/nuklear_impl.c.o CMakeFiles/external.dir/external/stb/stb_image_impl.c.o
-/usr/bin/ranlib libexternal.a

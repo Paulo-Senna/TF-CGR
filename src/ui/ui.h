@@ -1,4 +1,4 @@
-/* ui.h - Painel de controle (Nuklear) do Laboratório de Deformação. */
+/* ui.h - Painel de controle (Nuklear) do TF-CGR. */
 #ifndef UI_H
 #define UI_H
 

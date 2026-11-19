@@ -1,4 +1,4 @@
-/* texture.h - Texturas procedurais (geradas na CPU) e carregamento de imagens.
+/* texture.h - Texturas procedurais (geradas na CPU).
  *
  * As coordenadas de textura são o próprio (u, v) da grade paramétrica,
  * iguais para todas as formas. Por isso a textura "acompanha" a malha
@@ -15,7 +15,6 @@ enum {
     TEX_CHECKER,  /* xadrez */
     TEX_STRIPES,  /* listras na direção u */
     TEX_UV_GRID,  /* grade com gradiente de cor em u e v */
-    TEX_IMAGE,    /* imagem PNG/JPG carregada pelo usuário */
     TEX_COUNT
 };
 
@@ -31,11 +30,8 @@ GLuint texture_create_rgba(const unsigned char *pixels, int w, int h);
 int texture_proc_pixels(int which, unsigned char *px);
 
 /* Gera as texturas procedurais em ids[TEX_CHECKER..TEX_UV_GRID].
- * ids[TEX_NONE] e ids[TEX_IMAGE] ficam 0. Retorna 0 se faltar memória. */
+ * ids[TEX_NONE] fica 0. Retorna 0 se faltar memória. */
 int texture_make_presets(GLuint ids[TEX_COUNT]);
 
-/* Carrega um PNG/JPG com stb_image. Em caso de erro retorna 0 e escreve
- * a mensagem em 'err'. Em caso de sucesso, devolve largura/altura. */
-GLuint texture_load_file(const char *path, int *w, int *h, char *err, size_t err_size);
 
 #endif /* TEXTURE_H */

@@ -1,4 +1,4 @@
-/* main.c - Laboratório de Deformação em OpenGL moderno (3.3 core).
+/* main.c - TF-CGR em OpenGL moderno (3.3 core).
  *
  * Projeto Final - Computação Gráfica - UDESC
  * Tema: Alteração de geometrias (morphing e deformação de objetos 3D)
@@ -150,7 +150,7 @@ static void render_scene(int x0, int width, int height) {
     glUniform1f(app.loc.twist, app.deform.twist);
     glUniform1f(app.loc.bend, app.deform.bend);
 
-    /* Textura: "Nenhuma" (ou imagem ainda não carregada) usa só a cor. */
+    /* Textura: "Nenhuma" usa só a cor da forma. */
     use_tex = tx->current != TEX_NONE && tx->ids[tx->current] != 0;
     glUniform1i(app.loc.use_texture, use_tex);
     glUniform1i(app.loc.tex_multiply, tx->multiply);
@@ -191,7 +191,7 @@ static void update_title(GLFWwindow *win, float fps) {
     char title[320], next[64] = "";
     if (m->queued >= 0) snprintf(next, sizeof(next), " (próximo: %s)", app.shapes[m->queued].name);
     snprintf(title, sizeof(title),
-             "Laboratório de Deformação | %s -> %s%s | t = %.2f | %s | %s | %.0f FPS",
+             "TF-CGR | %s -> %s%s | t = %.2f | %s | %s | %.0f FPS",
              app.shapes[m->from].name, app.shapes[m->to].name, next, m->t,
              m->auto_play ? "automático" : "pausado",
              mode_names[app.render_mode], fps);
@@ -200,7 +200,7 @@ static void update_title(GLFWwindow *win, float fps) {
 
 static void print_help(void) {
     int i;
-    printf("\n=== Laboratorio de Deformacao - Controles ===\n"
+    printf("\n=== TF-CGR - Controles ===\n"
            "  Painel a esquerda: formas, mistura, deformacoes, texturas e exportacao\n"
            "  ESPACO        liga / pausa a animacao automatica\n"
            "  SETAS < >     controla o morph manualmente (t diminui / aumenta)\n"
@@ -210,7 +210,7 @@ static void print_help(void) {
            "  Mouse (esq.)  arrasta para orbitar a camera\n"
            "  Scroll        zoom\n"
            "  ESC           sair\n"
-           "  Arraste um PNG/JPG (textura) ou um .obj (forma) para a janela\n\n"
+           "  Arraste um .obj para a janela para adiciona-lo como forma\n\n"
            "Formas:",
            app.shape_count);
     for (i = 0; i < app.shape_count; ++i) printf("  [%d] %s", i + 1, app.shapes[i].name);
@@ -297,12 +297,12 @@ static int has_extension(const char *path, const char *ext) {
     return 1;
 }
 
-/* Arrastar um arquivo para a janela: .obj vira forma, o resto é tentado como imagem. */
+/* Arrastar um .obj para a janela adiciona o modelo como forma. */
 static void drop_callback(GLFWwindow *win, int count, const char **paths) {
     (void)win;
     if (count <= 0) return;
     if (has_extension(paths[0], ".obj")) app_add_shape_file(paths[0]);
-    else app_load_image(paths[0]);
+    else app_message(&app.shape_msg, 1, "Arraste um arquivo .obj para adicionar uma forma.");
 }
 
 static void scroll_callback(GLFWwindow *win, double dx, double dy) {
@@ -336,12 +336,11 @@ int main(int argc, char **argv) {
     int win_height = WINDOW_H;
     char vert_path[512], frag_path[512];
     /* Opções de linha de comando (todas opcionais):
-     *   imagem.png            usa a imagem como textura
      *   --forma modelo.obj    adiciona o modelo como forma
      *   --exportar saida.obj  exporta a forma exibida logo ao abrir
      *   --captura arq.ppm     salva um quadro da tela e sai (testes)
      *   --quadros N           qual quadro capturar (passo fixo de 1/60 s) */
-    const char *capture_path = NULL, *image_path = NULL, *shape_path = NULL, *export_path = NULL;
+    const char *capture_path = NULL, *shape_path = NULL, *export_path = NULL;
     int capture_frame = 100;
     double last, title_timer = 0.0;
     int frames = 0, frame_number = 0, i;
@@ -351,7 +350,6 @@ int main(int argc, char **argv) {
         else if (strcmp(argv[i], "--quadros") == 0 && i + 1 < argc) capture_frame = atoi(argv[++i]);
         else if (strcmp(argv[i], "--forma") == 0 && i + 1 < argc) shape_path = argv[++i];
         else if (strcmp(argv[i], "--exportar") == 0 && i + 1 < argc) export_path = argv[++i];
-        else if (argv[i][0] != '-' && !image_path) image_path = argv[i];
         else fprintf(stderr, "Aviso: opcao desconhecida '%s'\n", argv[i]);
     }
 
@@ -372,7 +370,7 @@ int main(int argc, char **argv) {
     if (mode && mode->height * 9 / 10 < win_height) win_height = mode->height * 9 / 10;
     if (win_height < WINDOW_H_MIN) win_height = WINDOW_H_MIN;
 
-    win = glfwCreateWindow(WINDOW_W, win_height, "Laboratório de Deformação", NULL, NULL);
+    win = glfwCreateWindow(WINDOW_W, win_height, "TF-CGR", NULL, NULL);
     if (!win) {
         fprintf(stderr, "Erro: nao foi possivel criar janela OpenGL 3.3\n");
         glfwTerminate();
@@ -410,7 +408,6 @@ int main(int argc, char **argv) {
     }
     cache_uniforms();
     print_help();
-    if (image_path) app_load_image(image_path);
     if (shape_path) app_add_shape_file(shape_path);
     if (export_path) export_model(export_path);
 

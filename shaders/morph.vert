@@ -1,5 +1,5 @@
 #version 330 core
-// Vertex shader do Laboratório de Deformação.
+// Vertex shader do TF-CGR.
 //
 // Etapa 1 - MISTURA (morphing): cada vértice recebe a posição/normal da
 // forma A e da forma B (mesmo vértice da grade nas duas). A interpolação é

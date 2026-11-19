@@ -19,7 +19,7 @@ static const char *base_name(const char *path) {
     return a ? a + 1 : path;
 }
 
-/* Extensão do arquivo em minúsculas, com o ponto (".png"), ou "" se não tiver. */
+/* Extensão do arquivo em minúsculas, com o ponto (".obj"), ou "" se não tiver. */
 static void extension(const char *path, char *out, size_t size) {
     const char *dot = strrchr(base_name(path), '.');
     size_t i;
@@ -53,57 +53,29 @@ static int write_tga(const char *path, const unsigned char *px, int w, int h) {
     return fclose(f) == 0;
 }
 
-static int copy_file(const char *from, const char *to) {
-    char buf[64 * 1024];
-    size_t n;
-    int ok = 1;
-    FILE *in = fopen(from, "rb"), *out;
-    if (!in) return 0;
-    out = fopen(to, "wb");
-    if (!out) {
-        fclose(in);
-        return 0;
-    }
-    while ((n = fread(buf, 1, sizeof(buf), in)) > 0)
-        if (fwrite(buf, 1, n, out) != n) ok = 0;
-    fclose(in);
-    return (fclose(out) == 0) && ok;
-}
-
-/* Salva a textura em uso ao lado do .obj. Escreve em 'tex_file' o caminho
- * criado (ou "" se não há textura). O flag 'flip' diz se o (u,v) precisa ser
- * espelhado para bater com a imagem original. Retorna 0 em caso de erro. */
-static int export_texture(const char *stem, char *tex_file, size_t size, int *flip) {
+/* Salva a textura em uso ao lado do .obj, como nome_textura.tga. Escreve
+ * em 'tex_file' o caminho criado (ou "" se não há textura). Retorna 0 em
+ * caso de erro. */
+static int export_texture(const char *stem, char *tex_file, size_t size) {
     const TexState *tx = &app.tex;
+    unsigned char *px;
+    int ok;
     tex_file[0] = '\0';
-    *flip = 0;
     if (tx->current == TEX_NONE || !tx->ids[tx->current]) return 1;
 
-    if (tx->current == TEX_IMAGE) {
-        /* Ao carregar, a imagem foi espelhada na horizontal e a linha de
-         * cima virou v = 0 (ver texture.c). O arquivo copiado é o original,
-         * então o (u,v) exportado é espelhado nos dois eixos. */
-        char ext[16];
-        extension(tx->path, ext, sizeof(ext));
-        snprintf(tex_file, size, "%s_textura%s", stem, ext);
-        *flip = 1;
-        return copy_file(tx->path, tex_file);
-    } else {
-        unsigned char *px = (unsigned char *)malloc((size_t)TEX_PROC_SIZE * TEX_PROC_SIZE * 4);
-        int ok;
-        if (!px) return 0;
-        texture_proc_pixels(tx->current, px);
-        snprintf(tex_file, size, "%s_textura.tga", stem);
-        ok = write_tga(tex_file, px, TEX_PROC_SIZE, TEX_PROC_SIZE);
-        free(px);
-        return ok;
-    }
+    px = (unsigned char *)malloc((size_t)TEX_PROC_SIZE * TEX_PROC_SIZE * 4);
+    if (!px) return 0;
+    texture_proc_pixels(tx->current, px);
+    snprintf(tex_file, size, "%s_textura.tga", stem);
+    ok = write_tga(tex_file, px, TEX_PROC_SIZE, TEX_PROC_SIZE);
+    free(px);
+    return ok;
 }
 
 static int write_mtl(const char *path, Vec3 kd, const char *tex_file) {
     FILE *f = fopen(path, "w");
     if (!f) return 0;
-    fprintf(f, "# Material exportado pelo Laboratorio de Deformacao\n");
+    fprintf(f, "# Material exportado pelo TF-CGR\n");
     fprintf(f, "newmtl material\n");
     fprintf(f, "Ka 0.1 0.1 0.1\nKd %.4f %.4f %.4f\nKs 0.4 0.4 0.4\nNs 32\nd 1\nillum 2\n", kd.x,
             kd.y, kd.z);
@@ -122,7 +94,7 @@ int export_model(const char *obj_path) {
     float *uv = (float *)malloc(VERTEX_COUNT * 2 * sizeof(float));
     unsigned *idx = (unsigned *)malloc(INDEX_COUNT * sizeof(unsigned));
     Vec3 kd;
-    int i, flip, ok = 0;
+    int i, ok = 0;
 
     if (!pos || !nrm || !uv || !idx) {
         app_message(&app.export_msg, 1, "Erro: memória insuficiente para exportar.");
@@ -133,7 +105,7 @@ int export_model(const char *obj_path) {
         goto done;
     }
 
-    /* Nome dos arquivos: "pasta/nome" + .obj / .mtl / _textura.xxx */
+    /* Nome dos arquivos: "pasta/nome" + .obj / .mtl / _textura.tga */
     extension(obj_path, ext, sizeof(ext));
     if (strcmp(ext, ".obj") == 0) {
         snprintf(path, sizeof(path), "%s", obj_path);
@@ -144,7 +116,7 @@ int export_model(const char *obj_path) {
     }
     snprintf(mtl, sizeof(mtl), "%s.mtl", stem);
 
-    if (!export_texture(stem, tex, sizeof(tex), &flip)) {
+    if (!export_texture(stem, tex, sizeof(tex))) {
         app_message(&app.export_msg, 1, "Erro: não foi possível salvar a textura.");
         goto done;
     }
@@ -159,10 +131,6 @@ int export_model(const char *obj_path) {
         nrm[i] = deform_normal(p, n, &app.deform);
         uv[2 * i] *= app.tex.scale;
         uv[2 * i + 1] *= app.tex.scale;
-        if (flip) {
-            uv[2 * i] = 1.0f - uv[2 * i];
-            uv[2 * i + 1] = 1.0f - uv[2 * i + 1];
-        }
     }
 
     /* Cor do material: a da forma, ou branco se a textura aparece pura. */
@@ -170,7 +138,7 @@ int export_model(const char *obj_path) {
     if (tex[0] && !app.tex.multiply) kd = v3(1, 1, 1);
 
     snprintf(header, sizeof(header),
-             "%s %d %d\n# Exportado pelo Laboratorio de Deformacao\n"
+             "%s %d %d\n# Exportado pelo TF-CGR\n"
              "# %s -> %s, mistura %.0f%%, taper %.2f, twist %.2f, bend %.2f",
              OBJ_GRID_MARK, GRID_U + 1, GRID_V + 1, a->name, b->name, t * 100.0f,
              app.deform.taper, app.deform.twist, app.deform.bend);

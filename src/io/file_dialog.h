@@ -12,7 +12,7 @@
 enum { DIALOG_CANCELLED = 0, DIALOG_OK = 1, DIALOG_UNAVAILABLE = -1 };
 
 /* 'title' e 'filter_name' devem ser ASCII (o Windows não lê UTF-8 aqui).
- * 'patterns' é uma lista separada por espaços, ex.: "*.png *.jpg".
+ * 'patterns' é uma lista separada por espaços, ex.: "*.obj *.OBJ".
  * O caminho escolhido vai para 'out'. Retorna um dos DIALOG_*. */
 int dialog_open_file(const char *title, const char *filter_name, const char *patterns,
                      char *out, size_t out_size);

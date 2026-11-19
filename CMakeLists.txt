@@ -17,10 +17,9 @@ find_package(glfw3 REQUIRED)
 add_library(external STATIC
     external/glad/src/gl.c
     external/nuklear/nuklear_impl.c
-    external/stb/stb_image_impl.c
 )
 target_include_directories(external SYSTEM PUBLIC
-    external/glad/include external/nuklear external/stb)
+    external/glad/include external/nuklear)
 target_include_directories(external PRIVATE src)
 target_link_libraries(external PUBLIC glfw)
 target_compile_options(external PRIVATE -w)

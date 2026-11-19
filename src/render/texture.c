@@ -1,15 +1,11 @@
-/* texture.c - Texturas procedurais (geradas na CPU) e carregamento de imagens. */
+/* texture.c - Texturas procedurais (geradas na CPU). */
 #include "render/texture.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <stb_image.h> /* implementação em external/stb/stb_image_impl.c */
-
 const char *texture_name(int which) {
-    static const char *names[TEX_COUNT] = {"Nenhuma", "Xadrez", "Listras", "Grade UV",
-                                           "Imagem carregada"};
+    static const char *names[TEX_COUNT] = {"Nenhuma", "Xadrez", "Listras", "Grade UV"};
     return (which >= 0 && which < TEX_COUNT) ? names[which] : "?";
 }
 
@@ -97,68 +93,4 @@ int texture_make_presets(GLuint ids[TEX_COUNT]) {
         if (texture_proc_pixels(i, px)) ids[i] = texture_create_rgba(px, TEX_PROC_SIZE, TEX_PROC_SIZE);
     free(px);
     return 1;
-}
-
-/* Só o nome do arquivo, sem as pastas. */
-static const char *base_name(const char *path) {
-    const char *a = strrchr(path, '/'), *b = strrchr(path, '\\');
-    if (b > a) a = b;
-    return a ? a + 1 : path;
-}
-
-/* Traduz as mensagens mais comuns do stb_image. */
-static const char *translate_reason(const char *reason) {
-    static const char *table[][2] = {
-        {"Unable to open file", "arquivo não encontrado ou sem permissão"},
-        {"can't fopen", "arquivo não encontrado ou sem permissão"},
-        {"Unknown image type", "formato não suportado (use PNG ou JPG)"},
-        {"Image not of any known type, or corrupt", "formato não suportado ou arquivo corrompido"},
-        {"Corrupt PNG", "PNG corrompido"},
-        {"Corrupt JPEG", "JPG corrompido"},
-        {"Out of memory", "memória insuficiente"},
-    };
-    size_t i;
-    if (!reason) return "erro desconhecido";
-    for (i = 0; i < sizeof(table) / sizeof(table[0]); ++i)
-        if (strcmp(reason, table[i][0]) == 0) return table[i][1];
-    return reason;
-}
-
-GLuint texture_load_file(const char *path, int *w, int *h, char *err, size_t err_size) {
-    int n, x, y, max_size = 0;
-    unsigned char *px;
-    GLuint id;
-
-    if (!path || !path[0]) {
-        snprintf(err, err_size, "Informe o caminho de um arquivo PNG ou JPG.");
-        return 0;
-    }
-    px = stbi_load(path, w, h, &n, 4); /* força 4 canais (RGBA) */
-    if (!px) {
-        snprintf(err, err_size, "Erro: %s (%.80s)", translate_reason(stbi_failure_reason()),
-                 base_name(path));
-        return 0;
-    }
-    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_size);
-    if (*w > max_size || *h > max_size) {
-        snprintf(err, err_size, "Erro: imagem grande demais (%dx%d; máximo da placa: %d).", *w,
-                 *h, max_size);
-        stbi_image_free(px);
-        return 0;
-    }
-    /* Espelha na horizontal: na grade, u cresce no sentido anti-horário
-     * visto de cima, ou seja, da direita para a esquerda para quem olha a
-     * forma de fora. Sem isso, textos da imagem apareceriam invertidos. */
-    for (y = 0; y < *h; ++y) {
-        unsigned char *row = px + (size_t)y * *w * 4;
-        for (x = 0; x < *w / 2; ++x) {
-            unsigned char tmp[4], *a = row + (size_t)x * 4, *b = row + (size_t)(*w - 1 - x) * 4;
-            memcpy(tmp, a, 4);
-            memcpy(a, b, 4);
-            memcpy(b, tmp, 4);
-        }
-    }
-    id = texture_create_rgba(px, *w, *h);
-    stbi_image_free(px);
-    return id;
 }

@@ -1,4 +1,4 @@
-/* ui.c - Painel de controle (Nuklear) do Laboratório de Deformação.
+/* ui.c - Painel de controle (Nuklear) do TF-CGR.
  *
  * O Nuklear é uma interface "modo imediato": a cada quadro o painel
  * inteiro é descrito de novo, lendo e escrevendo direto no estado 'app'.
@@ -13,7 +13,7 @@
 #include "ui/nuklear_setup.h"
 
 #define PANEL_NAME "painel"
-#define PANEL_TITLE "Laboratório de Deformação"
+#define PANEL_TITLE "TF-CGR"
 #define PANEL_WIDTH 330.0f
 #define ROW_H 20.0f
 
@@ -192,35 +192,12 @@ static void section_texture(void) {
     for (i = 0; i < TEX_COUNT; ++i) names[i] = texture_name(i);
     nk_layout_row(ctx, NK_DYNAMIC, ROW_H, 2, ratio);
     nk_label(ctx, "Textura", NK_TEXT_LEFT);
-    sel = nk_combo(ctx, names, TEX_COUNT, tx->current, (int)ROW_H, nk_vec2(180, 160));
-    if (sel != tx->current) {
-        if (sel == TEX_IMAGE && !tx->ids[TEX_IMAGE]) {
-            app_message(&tx->msg, 1, "Nenhuma imagem carregada ainda: use o botão abaixo.");
-        } else {
-            tx->current = sel;
-        }
-    }
+    sel = nk_combo(ctx, names, TEX_COUNT, tx->current, (int)ROW_H, nk_vec2(180, 130));
+    tx->current = sel;
 
     slider_row("Repetição", &tx->scale, TEX_SCALE_MIN, TEX_SCALE_MAX, 0.05f);
     checkbox_row("Multiplicar pela cor da forma", &tx->multiply);
 
-    /* Abre a janela do sistema para escolher a imagem. Arrastar o arquivo
-     * para a janela também funciona (drop_callback em main.c). */
-    if (button_row("Adicionar imagem (PNG/JPG)...")) {
-        char path[1024];
-        int r = dialog_open_file("Escolher imagem de textura", "Imagens (PNG, JPG)",
-                                 "*.png *.jpg *.jpeg *.PNG *.JPG *.JPEG", path, sizeof(path));
-        if (r == DIALOG_OK) app_load_image(path);
-        else if (r == DIALOG_UNAVAILABLE) no_dialog(&tx->msg);
-    }
-
-    if (tx->ids[TEX_IMAGE]) {
-        char text[128];
-        nk_layout_row_dynamic(ctx, 16, 1);
-        snprintf(text, sizeof(text), "Imagem: %s", tx->image_info);
-        nk_label_colored(ctx, text, NK_TEXT_LEFT, nk_rgb(150, 150, 150));
-    }
-    message_row(&tx->msg);
 }
 
 static void section_view(void) {

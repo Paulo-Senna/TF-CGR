@@ -1,4 +1,4 @@
-/* app.h - Estado global do Laboratório de Deformação e operações sobre ele.
+/* app.h - Estado global do TF-CGR e operações sobre ele.
  *
  * O estado fica numa única struct (app), compartilhada por main.c
  * (janela, entrada, renderização) e ui.c (painel). As funções app_*
@@ -61,9 +61,6 @@ typedef struct {
     GLuint ids[TEX_COUNT];
     float scale;         /* "Repetição": multiplica o (u,v) */
     int multiply;        /* multiplica a textura pela cor da forma */
-    char path[512];      /* arquivo da imagem carregada (copiado ao exportar) */
-    char image_info[96]; /* nome/tamanho da imagem carregada */
-    Message msg;
 } TexState;
 
 enum { RENDER_SOLID = 0, RENDER_SOLID_WIRE, RENDER_WIRE, RENDER_MODE_COUNT };
@@ -104,11 +101,8 @@ extern App app;
 void app_reset_state(void);  /* estado inicial (mantém as formas adicionadas) */
 void app_reset_camera(void);
 void app_reset_deform(void);
-void app_reset_texture(void); /* volta a "Nenhuma" (mantém a imagem carregada) */
+void app_reset_texture(void); /* volta a "Nenhuma" */
 
-/* Carrega um PNG/JPG e passa a usá-lo. Em caso de erro, mostra a mensagem
- * no painel e no terminal e mantém a textura atual. Retorna 1 se carregou. */
-int app_load_image(const char *path);
 
 /* Lê um modelo .obj, encaixa na grade (geometry/mesh_fit.h), envia para a
  * GPU e já mostra: a nova forma vira a forma A, parada (t = 0), pronta

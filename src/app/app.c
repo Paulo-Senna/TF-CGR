@@ -43,26 +43,6 @@ static const char *base_name(const char *path) {
     return a ? a + 1 : path;
 }
 
-int app_load_image(const char *path) {
-    TexState *tx = &app.tex;
-    char text[sizeof(tx->msg.text)];
-    int w = 0, h = 0;
-    GLuint id = texture_load_file(path, &w, &h, text, sizeof(text));
-    if (!id) {
-        app_message(&tx->msg, 1, text);
-        return 0;
-    }
-    if (tx->ids[TEX_IMAGE]) glDeleteTextures(1, &tx->ids[TEX_IMAGE]);
-    tx->ids[TEX_IMAGE] = id;
-    tx->current = TEX_IMAGE;
-    tx->multiply = 0; /* uma foto aparece com as cores originais */
-    snprintf(tx->path, sizeof(tx->path), "%s", path);
-    snprintf(tx->image_info, sizeof(tx->image_info), "%.60s (%dx%d)", base_name(path), w, h);
-    snprintf(text, sizeof(text), "Imagem carregada: %s", tx->image_info);
-    app_message(&tx->msg, 0, text);
-    return 1;
-}
-
 void app_upload_shape(int index) {
     const Shape *sh = &app.shapes[index];
     float *data = (float *)malloc(VERTEX_COUNT * 6 * sizeof(float));
@@ -151,7 +131,7 @@ void app_reset_state(void) {
     app_reset_camera();
     app.render_mode = RENDER_SOLID;
     app.rotate = 1;
-    app.shape_msg.text[0] = app.export_msg.text[0] = app.tex.msg.text[0] = '\0';
+    app.shape_msg.text[0] = app.export_msg.text[0] = '\0';
     app_bind_shape_pair(); /* não faz nada antes de o VAO existir */
 }
 

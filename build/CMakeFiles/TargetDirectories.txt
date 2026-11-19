@@ -1,4 +1,0 @@
-/home/senna/Documents/TF-CGR/build/CMakeFiles/external.dir
-/home/senna/Documents/TF-CGR/build/CMakeFiles/morph3d.dir
-/home/senna/Documents/TF-CGR/build/CMakeFiles/edit_cache.dir
-/home/senna/Documents/TF-CGR/build/CMakeFiles/rebuild_cache.dir
