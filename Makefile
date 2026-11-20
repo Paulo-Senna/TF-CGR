@@ -8,9 +8,9 @@ endif
 
 # Nosso código: C99, todos os avisos ligados.
 # Os headers de external/ entram com -isystem: avisos deles não aparecem.
-EXT_INC := -isystem external/glad/include -isystem external/nuklear
+EXT_INC := -isystem external/glad/include
 CFLAGS := -std=c99 -O2 -Wall -Wextra -Isrc $(EXT_INC)
-# Bibliotecas de terceiros (external/): compiladas sem avisos.
+# glad (external/): código gerado, compilado sem avisos.
 EXT_CFLAGS := -std=c99 -O2 -w -Isrc $(EXT_INC)
 
 ifeq ($(DEBUG),1)
@@ -27,11 +27,11 @@ else
     LIBS   := -lglfw -lGL -ldl -lpthread -lm
 endif
 
-# Todo .c dentro de src/ e das subpastas (app, geometry, render, io, ui).
+# Todo .c dentro de src/ e das subpastas (app, geometry, render, io).
 SRCS     := $(wildcard src/*.c src/*/*.c)
 OBJS     := $(SRCS:.c=.o)
 HEADERS  := $(wildcard src/*/*.h)
-EXT_OBJS := external/glad/src/gl.o external/nuklear/nuklear_impl.o
+EXT_OBJS := external/glad/src/gl.o
 
 $(TARGET): $(OBJS) $(EXT_OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -39,7 +39,7 @@ $(TARGET): $(OBJS) $(EXT_OBJS)
 src/%.o: src/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-external/%.o: external/%.c src/ui/nuklear_setup.h
+external/%.o: external/%.c
 	$(CC) $(EXT_CFLAGS) -c $< -o $@
 
 clean:

@@ -1,47 +1,33 @@
 #version 330 core
-// Fragment shader: cor base (textura e/ou cor da forma) e iluminação de
-// Phong (ambiente + difusa + especular) calculada por pixel.
+// Fragment shader: cor de cada pixel com iluminação de Phong
+// (ambiente + difusa + especular).
 in vec3 vWorldPos;
 in vec3 vNormal;
-in vec2 vUV;
 
-uniform vec3 uColor;        // cor já interpolada entre as duas formas
-uniform vec3 uLightPos;
-uniform vec3 uEyePos;
-uniform bool uWireframe;
-uniform vec3 uWireColor;    // cor das linhas no modo malha
-
-uniform sampler2D uTex;     // textura ativa (unidade 0)
-uniform bool uUseTexture;   // false = "Nenhuma"
-uniform bool uTexMultiply;  // true = textura * cor da forma
+uniform vec3 uColor;      // cor da forma (também interpolada entre A e B)
+uniform vec3 uLightPos;   // posição da luz
+uniform vec3 uEyePos;     // posição da câmera
+uniform bool uWireframe;  // modo "só malha" (tecla W): linhas sem iluminação
 
 out vec4 fragColor;
 
 void main() {
     if (uWireframe) {
-        fragColor = vec4(uWireColor, 1.0);
+        fragColor = vec4(uColor, 1.0);
         return;
     }
 
-    // Cor base do material.
-    vec3 base = uColor;
-    if (uUseTexture) {
-        vec3 texel = texture(uTex, vUV).rgb;
-        base = uTexMultiply ? texel * uColor : texel;
-    }
-
     vec3 N = normalize(vNormal);
-    vec3 L = normalize(uLightPos - vWorldPos);
-    vec3 V = normalize(uEyePos - vWorldPos);
-    // Iluminação dos dois lados: durante o morphing (e no plano) podemos
-    // ver o "lado de dentro" de alguma face; nesse caso inverte a normal.
+    vec3 L = normalize(uLightPos - vWorldPos);  // direção até a luz
+    vec3 V = normalize(uEyePos - vWorldPos);    // direção até a câmera
+    // Durante o morph (e no plano) dá para ver o "lado de dentro" de
+    // alguma face; nesse caso invertemos a normal para ela ser iluminada.
     if (dot(N, V) < 0.0) N = -N;
-    vec3 R = reflect(-L, N);
+    vec3 R = reflect(-L, N);                    // reflexão da luz
 
-    float ambient  = 0.18;
-    float diffuse  = max(dot(N, L), 0.0);
-    float specular = pow(max(dot(R, V), 0.0), 48.0) * 0.6;
+    float ambient  = 0.18;                                // luz de fundo
+    float diffuse  = max(dot(N, L), 0.0);                 // Lambert
+    float specular = pow(max(dot(R, V), 0.0), 48.0) * 0.6; // brilho
 
-    vec3 color = base * (ambient + diffuse) + vec3(specular);
-    fragColor = vec4(color, 1.0);
+    fragColor = vec4(uColor * (ambient + diffuse) + vec3(specular), 1.0);
 }

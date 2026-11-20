@@ -1,15 +1,19 @@
-/* export.h - Exporta a forma exibida (mistura + deformações) como modelo 3D.
+/* export.h - Salva a forma que está na tela (a mistura A/B no t atual).
  *
  * Gera, na pasta escolhida:
- *   nome.obj           a malha deformada (posições, normais e coordenadas de textura)
- *   nome.mtl           o material (cor da forma)
- *   nome_textura.tga   a textura em uso, se houver
- * A rotação automática da cena não entra: o modelo sai na posição original. */
+ *   nome.obj   a malha (posições e normais)
+ *   nome.mtl   o material (cor da forma)
+ * A rotação da cena não entra: o modelo sai na posição original. */
 #ifndef EXPORT_H
 #define EXPORT_H
 
-/* 'obj_path' ganha a extensão .obj se não tiver. Resultado em app.export_msg.
- * Retorna 1 se deu certo. */
-int export_model(const char *obj_path);
+#include <stddef.h>
+
+#include "geometry/shapes.h"
+
+/* 'obj_path' ganha a extensão .obj se não tiver. Escreve o resultado
+ * (sucesso ou erro) em 'msg'. Retorna 1 se deu certo. */
+int export_model(const char *obj_path, const Shape *a, const Shape *b, float t, char *msg,
+                 size_t msg_size);
 
 #endif /* EXPORT_H */

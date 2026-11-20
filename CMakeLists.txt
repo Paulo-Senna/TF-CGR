@@ -13,33 +13,26 @@ set(OpenGL_GL_PREFERENCE GLVND)
 find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
 
-# Bibliotecas de terceiros: compiladas à parte, sem avisos.
-add_library(external STATIC
-    external/glad/src/gl.c
-    external/nuklear/nuklear_impl.c
-)
-target_include_directories(external SYSTEM PUBLIC
-    external/glad/include external/nuklear)
-target_include_directories(external PRIVATE src)
-target_link_libraries(external PUBLIC glfw)
-target_compile_options(external PRIVATE -w)
+# glad (carregador do OpenGL): código gerado, compilado à parte sem avisos.
+add_library(glad STATIC external/glad/src/gl.c)
+target_include_directories(glad SYSTEM PUBLIC external/glad/include)
+target_compile_options(glad PRIVATE -w)
 
 add_executable(morph3d
     src/main.c
     src/app/app.c
     src/geometry/shapes.c
-    src/geometry/deform.c
     src/geometry/mesh_fit.c
+    src/geometry/morph.c
     src/render/shader.c
-    src/render/texture.c
+    src/render/render.c
     src/io/obj.c
     src/io/export.c
     src/io/file_dialog.c
-    src/ui/ui.c
 )
 target_include_directories(morph3d PRIVATE src)
 target_compile_options(morph3d PRIVATE -Wall -Wextra)
-target_link_libraries(morph3d PRIVATE external glfw OpenGL::GL ${CMAKE_DL_LIBS})
+target_link_libraries(morph3d PRIVATE glad glfw OpenGL::GL ${CMAKE_DL_LIBS})
 if(WIN32)
     target_link_libraries(morph3d PRIVATE comdlg32) # janela de abrir/salvar arquivo
 else()

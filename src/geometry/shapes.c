@@ -133,15 +133,6 @@ void shape_free(Shape *s) {
     s->positions = s->normals = NULL;
 }
 
-void grid_build_uvs(float *out) {
-    int i, j;
-    for (j = 0; j <= GRID_V; ++j)
-        for (i = 0; i <= GRID_U; ++i) {
-            *out++ = (float)i / GRID_U;
-            *out++ = (float)j / GRID_V;
-        }
-}
-
 void grid_build_indices(unsigned int *out) {
     const unsigned int row = GRID_U + 1;
     unsigned int i, j;

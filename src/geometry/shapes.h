@@ -51,8 +51,4 @@ Vec3 grid_sphere_dir(float u, float v);
  * 'out' precisa ter INDEX_COUNT posições. */
 void grid_build_indices(unsigned int *out);
 
-/* Coordenadas de textura (u, v) de cada vértice da grade, iguais para
- * todas as formas. 'out' precisa ter 2 * VERTEX_COUNT posições. */
-void grid_build_uvs(float *out);
-
 #endif /* SHAPES_H */

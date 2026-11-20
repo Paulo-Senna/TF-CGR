@@ -101,7 +101,7 @@ int obj_read(const char *path, ObjMesh *m, char *err, size_t err_size) {
 }
 
 int obj_write(const char *path, const char *header, const char *mtl_file, const char *material,
-              const Vec3 *pos, const Vec3 *nrm, const float *uv, int vcount,
+              const Vec3 *pos, const Vec3 *nrm, int vcount,
               const unsigned *idx, int icount) {
     FILE *f = fopen(path, "w");
     int i;
@@ -110,12 +110,11 @@ int obj_write(const char *path, const char *header, const char *mtl_file, const 
     if (mtl_file) fprintf(f, "mtllib %s\n", mtl_file);
     fprintf(f, "o modelo\n");
     for (i = 0; i < vcount; ++i) fprintf(f, "v %.6f %.6f %.6f\n", pos[i].x, pos[i].y, pos[i].z);
-    for (i = 0; i < vcount; ++i) fprintf(f, "vt %.6f %.6f\n", uv[2 * i], uv[2 * i + 1]);
     for (i = 0; i < vcount; ++i) fprintf(f, "vn %.6f %.6f %.6f\n", nrm[i].x, nrm[i].y, nrm[i].z);
     if (material) fprintf(f, "usemtl %s\n", material);
     for (i = 0; i + 2 < icount; i += 3) {
         unsigned a = idx[i] + 1, b = idx[i + 1] + 1, c = idx[i + 2] + 1;
-        fprintf(f, "f %u/%u/%u %u/%u/%u %u/%u/%u\n", a, a, a, b, b, b, c, c, c);
+        fprintf(f, "f %u//%u %u//%u %u//%u\n", a, a, b, b, c, c); /* posição//normal */
     }
     return fclose(f) == 0;
 }
